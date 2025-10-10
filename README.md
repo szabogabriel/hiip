@@ -35,11 +35,14 @@ java -jar target/data-storage-1.0.0.jar
 
 The application will start on `http://localhost:8080`.
 
-### Default Test Users
+### Default Admin User
 
-Two test users are created automatically:
-- Username: `user1`, Password: `password1`
-- Username: `user2`, Password: `password2`
+An admin user is created automatically with credentials configured in `application.properties`:
+- Username: `hiipa` (configurable via `hiip.admin.username`)
+- Password: `hiipa` (configurable via `hiip.admin.password`)
+- Email: `admin@example.com` (configurable via `hiip.admin.email`)
+
+Default values are used if not specified in configuration.
 
 ## API Endpoints
 
@@ -59,7 +62,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u user1:password1 -X POST http://localhost:8080/api/data \
+curl -u hiipa:hiipa -X POST http://localhost:8080/api/data \
   -H "Content-Type: application/json" \
   -d '{"content":"My data","tags":["important","work"]}'
 ```
@@ -72,7 +75,7 @@ GET /api/data
 
 Example:
 ```bash
-curl -u user1:password1 http://localhost:8080/api/data
+curl -u hiipa:hiipa http://localhost:8080/api/data
 ```
 
 ### Get Data by ID
@@ -83,7 +86,7 @@ GET /api/data/{id}
 
 Example:
 ```bash
-curl -u user1:password1 http://localhost:8080/api/data/1
+curl -u hiipa:hiipa http://localhost:8080/api/data/1
 ```
 
 ### Search Data by Tags
@@ -94,7 +97,7 @@ GET /api/data/search?tags=tag1&tags=tag2
 
 Example:
 ```bash
-curl -u user1:password1 "http://localhost:8080/api/data/search?tags=important"
+curl -u hiipa:hiipa "http://localhost:8080/api/data/search?tags=important"
 ```
 
 ### Update Data
@@ -111,7 +114,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u user1:password1 -X PUT http://localhost:8080/api/data/1 \
+curl -u hiipa:hiipa -X PUT http://localhost:8080/api/data/1 \
   -H "Content-Type: application/json" \
   -d '{"content":"Updated data","tags":["updated"]}'
 ```
@@ -124,7 +127,7 @@ DELETE /api/data/{id}
 
 Example:
 ```bash
-curl -u user1:password1 -X DELETE http://localhost:8080/api/data/1
+curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/data/1
 ```
 
 ## H2 Console
@@ -135,6 +138,61 @@ The H2 database console is available for development and testing:
 - JDBC URL: `jdbc:h2:mem:hiipdb`
 - Username: `sa`
 - Password: (leave empty)
+
+## Configuration
+
+The application can be configured via `application.properties` or environment variables. The following properties support environment variable overrides:
+
+### Database Configuration
+- `HIIP_DATASOURCE_URL` - Database URL (default: `jdbc:h2:mem:hiipdb`)
+- `HIIP_DATASOURCE_DRIVER` - Database driver (default: `org.h2.Driver`)
+- `HIIP_DATASOURCE_USERNAME` - Database username (default: `sa`)
+- `HIIP_DATASOURCE_PASSWORD` - Database password (default: empty)
+
+### H2 Console
+- `HIIP_H2_CONSOLE_ENABLED` - Enable/disable H2 console (default: `true`)
+
+### Admin User
+- `HIIP_ADMIN_USERNAME` - Admin username (default: `hiipa`)
+- `HIIP_ADMIN_PASSWORD` - Admin password (default: `hiipa`)
+- `HIIP_ADMIN_EMAIL` - Admin email (default: `admin@example.com`)
+
+### Example with Environment Variables
+
+```bash
+export HIIP_ADMIN_USERNAME=myadmin
+export HIIP_ADMIN_PASSWORD=mysecretpassword
+export HIIP_H2_CONSOLE_ENABLED=false
+java -jar target/data-storage-1.0.0.jar
+```
+
+## Container Deployment
+
+A `Containerfile` is provided for containerized deployment using Podman or Docker.
+
+### Building the Container Image
+
+```bash
+# Build the application first
+mvn clean package
+
+# Build the container image
+podman build -t hiit .
+```
+
+### Running with Podman/Docker
+
+```bash
+# Run with default configuration
+podman run -p 8080:8080 hiit
+
+# Run with custom environment variables
+podman run -p 8080:8080 \
+  -e HIIP_ADMIN_USERNAME=myadmin \
+  -e HIIP_ADMIN_PASSWORD=mysecretpassword \
+  -e HIIP_H2_CONSOLE_ENABLED=false \
+  hiit
+```
 
 ## Technical Details
 
