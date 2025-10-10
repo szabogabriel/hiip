@@ -34,17 +34,15 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        Optional<User> existingAdmin = userRepository.findByUsername(adminUname);
         if (resetAdminOnStartup) {
-            existingAdmin.ifPresent(user -> {
+            userRepository.findByUsername(adminUname).ifPresent(user -> {
                 if (!user.getIsAdmin()) {
                     throw new IllegalStateException("Existing user with username " + adminUname + " is not an admin.");
                 }
-                user.setActive(true);
-                userRepository.save(user);
+                userRepository.delete(user);
             });
         }
-        if (existingAdmin.isEmpty()) {
+        if (userRepository.findByUsername(adminUname).isEmpty()) {
             User user1 = new User(adminUname, passwordEncoder.encode(adminPass), adminEmail, true);
             userRepository.save(user1);
         } 
