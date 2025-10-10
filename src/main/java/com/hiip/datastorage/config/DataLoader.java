@@ -1,5 +1,7 @@
 package com.hiip.datastorage.config;
 
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -21,6 +23,9 @@ public class DataLoader implements CommandLineRunner {
     @Value("${hiip.admin.email:admin@example.com}")
     private String adminEmail;
 
+    @Value("${hiip.admin.reset-on-startup:true}")
+    private boolean resetAdminOnStartup;
+
     @Autowired
     private UserRepository userRepository;
 
@@ -29,9 +34,19 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (userRepository.findByUsername(adminUname).isEmpty()) {
+        Optional<User> existingAdmin = userRepository.findByUsername(adminUname);
+        if (resetAdminOnStartup) {
+            existingAdmin.ifPresent(user -> {
+                if (!user.getIsAdmin()) {
+                    throw new IllegalStateException("Existing user with username " + adminUname + " is not an admin.");
+                }
+                user.setActive(true);
+                userRepository.save(user);
+            });
+        }
+        if (existingAdmin.isEmpty()) {
             User user1 = new User(adminUname, passwordEncoder.encode(adminPass), adminEmail, true);
             userRepository.save(user1);
-        }
+        } 
     }
 }

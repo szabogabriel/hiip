@@ -44,6 +44,8 @@ An admin user is created automatically with credentials configured in `applicati
 
 Default values are used if not specified in configuration.
 
+**Admin Reset on Startup**: By default, the admin user credentials are reset on every application startup to prevent being locked out of the application (`hiip.admin.reset-on-startup=true`). This ensures that even if the admin password is changed or the admin user is deactivated, you can always regain access by restarting the application. Set this to `false` in production if you want to preserve admin user changes across restarts.
+
 ## API Endpoints
 
 All endpoints require HTTP Basic Authentication. 
@@ -282,12 +284,14 @@ The application can be configured via `application.properties` or environment va
 - `HIIP_ADMIN_USERNAME` - Admin username (default: `hiipa`)
 - `HIIP_ADMIN_PASSWORD` - Admin password (default: `hiipa`)
 - `HIIP_ADMIN_EMAIL` - Admin email (default: `admin@example.com`)
+- `HIIP_ADMIN_RESET_ON_STARTUP` - Reset admin user credentials on every startup (default: `true`)
 
 ### Example with Environment Variables
 
 ```bash
 export HIIP_ADMIN_USERNAME=myadmin
 export HIIP_ADMIN_PASSWORD=mysecretpassword
+export HIIP_ADMIN_RESET_ON_STARTUP=false
 export HIIP_H2_CONSOLE_ENABLED=false
 java -jar target/data-storage-1.0.0.jar
 ```
@@ -316,6 +320,7 @@ podman run -p 8080:8080 hiit
 podman run -p 8080:8080 \
   -e HIIP_ADMIN_USERNAME=myadmin \
   -e HIIP_ADMIN_PASSWORD=mysecretpassword \
+  -e HIIP_ADMIN_RESET_ON_STARTUP=false \
   -e HIIP_H2_CONSOLE_ENABLED=false \
   hiit
 ```
