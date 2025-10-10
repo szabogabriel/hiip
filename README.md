@@ -46,12 +46,19 @@ Default values are used if not specified in configuration.
 
 ## API Endpoints
 
-All endpoints require HTTP Basic Authentication.
+All endpoints require HTTP Basic Authentication. 
+
+### API Versioning
+
+The API uses URL-based versioning to ensure backward compatibility. The current version is `v1` and all endpoints are prefixed with `/api/v1/`. This allows for future API evolution while maintaining support for existing clients.
+
+- Current API version: **v1**
+- Base URL pattern: `http://localhost:8080/api/v1/`
 
 ### Create Data
 
 ```bash
-POST /api/data
+POST /api/v1/data
 Content-Type: application/json
 
 {
@@ -62,7 +69,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X POST http://localhost:8080/api/data \
+curl -u hiipa:hiipa -X POST http://localhost:8080/api/v1/data \
   -H "Content-Type: application/json" \
   -d '{"content":"My data","tags":["important","work"]}'
 ```
@@ -70,40 +77,40 @@ curl -u hiipa:hiipa -X POST http://localhost:8080/api/data \
 ### Get All Data
 
 ```bash
-GET /api/data
+GET /api/v1/data
 ```
 
 Example:
 ```bash
-curl -u hiipa:hiipa http://localhost:8080/api/data
+curl -u hiipa:hiipa http://localhost:8080/api/v1/data
 ```
 
 ### Get Data by ID
 
 ```bash
-GET /api/data/{id}
+GET /api/v1/data/{id}
 ```
 
 Example:
 ```bash
-curl -u hiipa:hiipa http://localhost:8080/api/data/1
+curl -u hiipa:hiipa http://localhost:8080/api/v1/data/1
 ```
 
 ### Search Data by Tags
 
 ```bash
-GET /api/data/search?tags=tag1&tags=tag2
+GET /api/v1/data/search?tags=tag1&tags=tag2
 ```
 
 Example:
 ```bash
-curl -u hiipa:hiipa "http://localhost:8080/api/data/search?tags=important"
+curl -u hiipa:hiipa "http://localhost:8080/api/v1/data/search?tags=important"
 ```
 
 ### Update Data
 
 ```bash
-PUT /api/data/{id}
+PUT /api/v1/data/{id}
 Content-Type: application/json
 
 {
@@ -114,7 +121,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X PUT http://localhost:8080/api/data/1 \
+curl -u hiipa:hiipa -X PUT http://localhost:8080/api/v1/data/1 \
   -H "Content-Type: application/json" \
   -d '{"content":"Updated data","tags":["updated"]}'
 ```
@@ -122,12 +129,12 @@ curl -u hiipa:hiipa -X PUT http://localhost:8080/api/data/1 \
 ### Hide Data (Soft Delete)
 
 ```bash
-DELETE /api/data/{id}
+DELETE /api/v1/data/{id}
 ```
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/data/1
+curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/v1/data/1
 ```
 
 ## User Management API
@@ -137,15 +144,15 @@ curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/data/1
 ### Get All Users
 
 ```bash
-GET /api/users
+GET /api/v1/users
 ```
 
 Optional parameter: `includeInactive=true` to include deactivated users.
 
 Example:
 ```bash
-curl -u hiipa:hiipa "http://localhost:8080/api/users"
-curl -u hiipa:hiipa "http://localhost:8080/api/users?includeInactive=true"
+curl -u hiipa:hiipa "http://localhost:8080/api/v1/users"
+curl -u hiipa:hiipa "http://localhost:8080/api/v1/users?includeInactive=true"
 ```
 
 ### Get User by ID
@@ -162,18 +169,18 @@ curl -u hiipa:hiipa http://localhost:8080/api/users/1
 ### Get User by Username
 
 ```bash
-GET /api/users/username/{username}
+GET /api/v1/users/username/{username}
 ```
 
 Example:
 ```bash
-curl -u hiipa:hiipa http://localhost:8080/api/users/username/hiipa
+curl -u hiipa:hiipa http://localhost:8080/api/v1/users/username/hiipa
 ```
 
 ### Create User
 
 ```bash
-POST /api/users
+POST /api/v1/users
 Content-Type: application/json
 
 {
@@ -187,7 +194,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X POST http://localhost:8080/api/users \
+curl -u hiipa:hiipa -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"username":"newuser","password":"password123","email":"user@example.com","isAdmin":false}'
 ```
@@ -195,7 +202,7 @@ curl -u hiipa:hiipa -X POST http://localhost:8080/api/users \
 ### Update User
 
 ```bash
-PUT /api/users/{id}
+PUT /api/v1/users/{id}
 Content-Type: application/json
 
 {
@@ -209,7 +216,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X PUT http://localhost:8080/api/users/1 \
+curl -u hiipa:hiipa -X PUT http://localhost:8080/api/v1/users/1 \
   -H "Content-Type: application/json" \
   -d '{"username":"updateduser","email":"updated@example.com","isAdmin":true}'
 ```
@@ -217,36 +224,36 @@ curl -u hiipa:hiipa -X PUT http://localhost:8080/api/users/1 \
 ### Delete User (Soft Delete)
 
 ```bash
-DELETE /api/users/{id}
+DELETE /api/v1/users/{id}
 ```
 
 This sets the user's `isActive` flag to `false` instead of permanently deleting the user.
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/users/1
+curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/v1/users/1
 ```
 
 ### Activate User
 
 ```bash
-PATCH /api/users/{id}/activate
+PATCH /api/v1/users/{id}/activate
 ```
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X PATCH http://localhost:8080/api/users/1/activate
+curl -u hiipa:hiipa -X PATCH http://localhost:8080/api/v1/users/1/activate
 ```
 
 ### Deactivate User
 
 ```bash
-PATCH /api/users/{id}/deactivate
+PATCH /api/v1/users/{id}/deactivate
 ```
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X PATCH http://localhost:8080/api/users/1/deactivate
+curl -u hiipa:hiipa -X PATCH http://localhost:8080/api/v1/users/1/deactivate
 ```
 
 ## H2 Console

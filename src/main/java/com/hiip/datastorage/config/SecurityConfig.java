@@ -25,8 +25,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/data/**")).authenticated()
-                .requestMatchers(new AntPathRequestMatcher("/api/users/**")).authenticated()
+                .requestMatchers(new AntPathRequestMatcher("/api/v1/data/**")).authenticated()
+                .requestMatchers(new AntPathRequestMatcher("/api/v1/users/**")).authenticated()
                 .anyRequest().permitAll()
             )
             .httpBasic(Customizer.withDefaults())

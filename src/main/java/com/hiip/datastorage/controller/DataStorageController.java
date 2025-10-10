@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/data")
+@RequestMapping("/api/v1/data")
 public class DataStorageController {
 
     @Autowired
