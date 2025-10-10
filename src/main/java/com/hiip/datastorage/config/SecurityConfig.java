@@ -37,6 +37,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/auth/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/actuator/health")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/actuator/info")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/data/**")).authenticated()
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/users/**")).authenticated()
                 .anyRequest().permitAll()

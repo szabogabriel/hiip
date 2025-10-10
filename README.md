@@ -339,7 +339,7 @@ The application can be configured via `application.properties` or environment va
 - `HIIP_HIBERNATE_DIALECT` - Setting the Hibernate dialect (default: `org.hibernate.dialect.H2Dialect`)
 
 ### H2 Console
-- `HIIP_H2_CONSOLE_ENABLED` - Enable/disable H2 console (default: `true`)
+- `HIIP_H2_CONSOLE_ENABLED` - Enable/disable H2 console (default: `false` - disabled for security)
 
 ### Admin User
 - `HIIP_ADMIN_USERNAME` - Admin username (default: `hiipa`)
@@ -348,19 +348,38 @@ The application can be configured via `application.properties` or environment va
 - `HIIP_ADMIN_RESET_ON_STARTUP` - Reset admin user credentials on every startup (default: `true`)
 
 ### JWT Configuration
-- `HIIP_JWT_SECRET` - JWT signing secret key (default: auto-generated, **must be set in production**)
+- `HIIP_JWT_SECRET` - JWT signing secret key (**REQUIRED** - no default for security)
 - `HIIP_JWT_EXPIRATION` - JWT token expiration time in milliseconds (default: `86400000` - 24 hours)
 - `HIIP_JWT_REFRESH_EXPIRATION` - Refresh token expiration time in milliseconds (default: `604800000` - 7 days)
+
+### JWT Secret Generation
+
+**Generate a secure JWT secret:**
+```bash
+# Generate a new JWT secret
+./scripts/generate-jwt-secret.sh
+
+# Use the generated secret
+export HIIP_JWT_SECRET="your-generated-secret-here"
+```
+
+**⚠️ Security Note**: The JWT secret is now **required** and has no default value. You must generate and set a secure secret before starting the application.
 
 ### Example with Environment Variables
 
 ```bash
+# Generate JWT secret first
+./scripts/generate-jwt-secret.sh
+
+# Set environment variables
 export HIIP_ADMIN_USERNAME=myadmin
 export HIIP_ADMIN_PASSWORD=mysecretpassword
 export HIIP_ADMIN_RESET_ON_STARTUP=false
-export HIIP_H2_CONSOLE_ENABLED=false
-export HIIP_JWT_SECRET=myVerySecureSecretKeyThatIsAtLeast256BitsLong1234567890
+export HIIP_H2_CONSOLE_ENABLED=true  # Enable for development
+export HIIP_JWT_SECRET="your-generated-secret-from-script"
 export HIIP_JWT_EXPIRATION=3600000
+
+# Start application
 java -jar target/data-storage-1.0.0.jar
 ```
 
@@ -381,8 +400,13 @@ podman build -t hiit .
 ### Running with Podman/Docker
 
 ```bash
-# Run with default configuration
-podman run -p 8080:8080 hiit
+# Generate JWT secret first
+JWT_SECRET=$(./scripts/generate-jwt-secret.sh | grep "HIIP_JWT_SECRET=" | cut -d'=' -f2)
+
+# Run with minimal configuration
+podman run -p 8080:8080 \
+  -e HIIP_JWT_SECRET="$JWT_SECRET" \
+  hiit
 
 # Run with custom environment variables
 podman run -p 8080:8080 \
@@ -390,8 +414,32 @@ podman run -p 8080:8080 \
   -e HIIP_ADMIN_PASSWORD=mysecretpassword \
   -e HIIP_ADMIN_RESET_ON_STARTUP=false \
   -e HIIP_H2_CONSOLE_ENABLED=false \
-  -e HIIP_JWT_SECRET=myVerySecureSecretKeyThatIsAtLeast256BitsLong1234567890 \
+  -e HIIP_JWT_SECRET="$JWT_SECRET" \
   hiit
+
+# Alternative: Auto-generate JWT secret on startup (NOT recommended for production)
+podman run -p 8080:8080 \
+  -e GENERATE_JWT_SECRET_ON_START=true \
+  hiit
+```
+
+### Startup Script Options
+
+The container includes a startup script with several options:
+
+```bash
+# Normal startup (requires HIIP_JWT_SECRET to be set)
+./scripts/start.sh
+
+# Generate a new JWT secret
+./scripts/start.sh generate-secret
+
+# Validate existing JWT secret
+./scripts/start.sh validate-secret
+
+# Show help
+./scripts/start.sh help
+```
 ```
 
 ## Technical Details
