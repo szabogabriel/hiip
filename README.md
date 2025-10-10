@@ -440,7 +440,6 @@ The container includes a startup script with several options:
 # Show help
 ./scripts/start.sh help
 ```
-```
 
 ## Technical Details
 
