@@ -11,8 +11,18 @@ Hiip is a Spring Boot application that provides a REST API for storing data with
 - **Tag-based search** - search data by one or multiple tags
 - **Soft delete** - data is hidden, not permanently removed
 - **Flat structure** - no hierarchy between data entries
-- **Authentication** - user-based data ownership
+- **Authentication** - user-based data ownership with JWT tokens
 - **H2 Database** - in-memory database for data storage
+- **Password Security** - comprehensive password security features
+- **Account Protection** - account lockout and brute force protection
+
+### Security Features
+
+- **Password Strength Validation**: Enforces strong passwords with configurable rules
+- **Password History**: Prevents password reuse (tracks last 5 passwords by default)
+- **Account Lockout**: Automatic account lockout after failed login attempts
+- **Password Reset**: Secure token-based password reset workflow
+- **Brute Force Protection**: Configurable failed attempt limits and lockout duration
 
 ## Getting Started
 
@@ -102,17 +112,104 @@ POST /api/v1/auth/logout
 Authorization: Bearer <your-jwt-token>
 ```
 
+#### Password Reset
+
+The API provides a secure password reset workflow using tokens:
+
+##### Request Password Reset
+
+```bash
+POST /api/v1/auth/password-reset/request
+Content-Type: application/json
+
+{
+  "usernameOrEmail": "hiipa"
+}
+```
+
+This will generate a password reset token and send it via email (in development, the token is returned in the response).
+
+Example:
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/password-reset/request \
+  -H "Content-Type: application/json" \
+  -d '{"usernameOrEmail":"hiipa"}'
+```
+
+##### Validate Reset Token
+
+Before showing the password reset form, validate that the token is still valid:
+
+```bash
+GET /api/v1/auth/password-reset/validate?token=your-reset-token
+```
+
+Example:
+```bash
+curl "http://localhost:8080/api/v1/auth/password-reset/validate?token=your-reset-token"
+```
+
+##### Confirm Password Reset
+
+Submit the new password with the reset token:
+
+```bash
+POST /api/v1/auth/password-reset/confirm
+Content-Type: application/json
+
+{
+  "token": "your-reset-token",
+  "newPassword": "NewSecurePassword123!"
+}
+```
+
+Example:
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/password-reset/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"token":"your-reset-token","newPassword":"NewSecurePassword123!"}'
+```
+
 #### Using JWT Token
 
 Include the JWT token in the Authorization header for all authenticated requests:
 
 ```bash
 Authorization: Bearer <your-jwt-token>
-``` 
+```
 
-### API Versioning
+### Password Security
 
-The API uses URL-based versioning to ensure backward compatibility. The current version is `v1` and all endpoints are prefixed with `/api/v1/`. This allows for future API evolution while maintaining support for existing clients.
+The application enforces strong password requirements and provides comprehensive password security features:
+
+#### Password Requirements
+- **Minimum length**: 8 characters
+- **Maximum length**: 128 characters
+- **Character types**: Must contain at least one:
+  - Lowercase letter (a-z)
+  - Uppercase letter (A-Z)
+  - Digit (0-9)
+  - Special character (!@#$%^&*()_+-=[]{}|;':"\\.,<>?/)
+- **Restrictions**:
+  - Cannot be common/weak passwords
+  - Cannot contain more than 3 consecutive identical characters
+  - Cannot contain sequential characters (like "1234" or "abcd")
+  - Cannot reuse previous passwords (last 5 passwords by default)
+
+#### Account Lockout
+- **Failed attempts**: Account locks after 5 failed login attempts (configurable)
+- **Lockout duration**: 30 minutes by default (configurable)
+- **Automatic unlock**: Accounts unlock automatically after the lockout period
+- **Reset on success**: Failed attempt counter resets on successful login
+
+#### Password Reset
+- **Token-based**: Secure token generation for password resets
+- **Expiration**: Reset tokens expire after 24 hours (configurable)
+- **Email delivery**: Tokens are sent via email (configurable email service)
+- **One-time use**: Tokens are invalidated after successful password reset
+- **Account unlock**: Password reset automatically unlocks locked accounts
+
+### API VersioningThe API uses URL-based versioning to ensure backward compatibility. The current version is `v1` and all endpoints are prefixed with `/api/v1/`. This allows for future API evolution while maintaining support for existing clients.
 
 - Current API version: **v1**
 - Base URL pattern: `http://localhost:8080/api/v1/`
@@ -351,6 +448,12 @@ The application can be configured via `application.properties` or environment va
 - `HIIP_JWT_SECRET` - JWT signing secret key (**REQUIRED** - no default for security)
 - `HIIP_JWT_EXPIRATION` - JWT token expiration time in milliseconds (default: `86400000` - 24 hours)
 - `HIIP_JWT_REFRESH_EXPIRATION` - Refresh token expiration time in milliseconds (default: `604800000` - 7 days)
+
+### Security Configuration
+- `HIIP_MAX_FAILED_ATTEMPTS` - Maximum failed login attempts before account lockout (default: `5`)
+- `HIIP_LOCKOUT_DURATION_MINUTES` - Account lockout duration in minutes (default: `30`)
+- `HIIP_PASSWORD_HISTORY_COUNT` - Number of previous passwords to remember (default: `5`)
+- `HIIP_PASSWORD_RESET_TOKEN_EXPIRATION_HOURS` - Password reset token expiration in hours (default: `24`)
 
 ### JWT Secret Generation
 
