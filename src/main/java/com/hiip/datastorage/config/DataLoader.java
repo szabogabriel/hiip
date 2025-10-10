@@ -30,7 +30,7 @@ public class DataLoader implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         if (userRepository.findByUsername(adminUname).isEmpty()) {
-            User user1 = new User(adminUname, passwordEncoder.encode(adminPass), adminEmail);
+            User user1 = new User(adminUname, passwordEncoder.encode(adminPass), adminEmail, true);
             userRepository.save(user1);
         }
     }
