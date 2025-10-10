@@ -48,7 +48,67 @@ Default values are used if not specified in configuration.
 
 ## API Endpoints
 
-All endpoints require HTTP Basic Authentication. 
+All endpoints require JWT authentication (except authentication endpoints). 
+
+### Authentication
+
+The API uses JWT (JSON Web Token) for authentication. First obtain a token by logging in, then include it in the Authorization header for subsequent requests.
+
+#### Login
+
+```bash
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "hiipa",
+  "password": "hiipa"
+}
+```
+
+Response:
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
+  "refreshToken": "eyJhbGciOiJIUzUxMiJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 86400,
+  "username": "hiipa"
+}
+```
+
+Example:
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"hiipa","password":"hiipa"}'
+```
+
+#### Refresh Token
+
+```bash
+POST /api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "your-refresh-token-here"
+}
+```
+
+#### Logout
+
+```bash
+POST /api/v1/auth/logout
+Authorization: Bearer <your-jwt-token>
+```
+
+#### Using JWT Token
+
+Include the JWT token in the Authorization header for all authenticated requests:
+
+```bash
+Authorization: Bearer <your-jwt-token>
+``` 
 
 ### API Versioning
 
@@ -71,7 +131,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X POST http://localhost:8080/api/v1/data \
+curl -H "Authorization: Bearer <your-jwt-token>" -X POST http://localhost:8080/api/v1/data \
   -H "Content-Type: application/json" \
   -d '{"content":"My data","tags":["important","work"]}'
 ```
@@ -84,7 +144,7 @@ GET /api/v1/data
 
 Example:
 ```bash
-curl -u hiipa:hiipa http://localhost:8080/api/v1/data
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:8080/api/v1/data
 ```
 
 ### Get Data by ID
@@ -95,7 +155,7 @@ GET /api/v1/data/{id}
 
 Example:
 ```bash
-curl -u hiipa:hiipa http://localhost:8080/api/v1/data/1
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:8080/api/v1/data/1
 ```
 
 ### Search Data by Tags
@@ -106,7 +166,7 @@ GET /api/v1/data/search?tags=tag1&tags=tag2
 
 Example:
 ```bash
-curl -u hiipa:hiipa "http://localhost:8080/api/v1/data/search?tags=important"
+curl -H "Authorization: Bearer <your-jwt-token>" "http://localhost:8080/api/v1/data/search?tags=important"
 ```
 
 ### Update Data
@@ -123,7 +183,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X PUT http://localhost:8080/api/v1/data/1 \
+curl -H "Authorization: Bearer <your-jwt-token>" -X PUT http://localhost:8080/api/v1/data/1 \
   -H "Content-Type: application/json" \
   -d '{"content":"Updated data","tags":["updated"]}'
 ```
@@ -136,7 +196,7 @@ DELETE /api/v1/data/{id}
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/v1/data/1
+curl -H "Authorization: Bearer <your-jwt-token>" -X DELETE http://localhost:8080/api/v1/data/1
 ```
 
 ## User Management API
@@ -153,8 +213,8 @@ Optional parameter: `includeInactive=true` to include deactivated users.
 
 Example:
 ```bash
-curl -u hiipa:hiipa "http://localhost:8080/api/v1/users"
-curl -u hiipa:hiipa "http://localhost:8080/api/v1/users?includeInactive=true"
+curl -H "Authorization: Bearer <your-jwt-token>" "http://localhost:8080/api/v1/users"
+curl -H "Authorization: Bearer <your-jwt-token>" "http://localhost:8080/api/v1/users?includeInactive=true"
 ```
 
 ### Get User by ID
@@ -165,7 +225,7 @@ GET /api/users/{id}
 
 Example:
 ```bash
-curl -u hiipa:hiipa http://localhost:8080/api/users/1
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:8080/api/users/1
 ```
 
 ### Get User by Username
@@ -176,7 +236,7 @@ GET /api/v1/users/username/{username}
 
 Example:
 ```bash
-curl -u hiipa:hiipa http://localhost:8080/api/v1/users/username/hiipa
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:8080/api/v1/users/username/hiipa
 ```
 
 ### Create User
@@ -196,7 +256,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X POST http://localhost:8080/api/v1/users \
+curl -H "Authorization: Bearer <your-jwt-token>" -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"username":"newuser","password":"password123","email":"user@example.com","isAdmin":false}'
 ```
@@ -218,7 +278,7 @@ Content-Type: application/json
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X PUT http://localhost:8080/api/v1/users/1 \
+curl -H "Authorization: Bearer <your-jwt-token>" -X PUT http://localhost:8080/api/v1/users/1 \
   -H "Content-Type: application/json" \
   -d '{"username":"updateduser","email":"updated@example.com","isAdmin":true}'
 ```
@@ -233,7 +293,7 @@ This sets the user's `isActive` flag to `false` instead of permanently deleting 
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/v1/users/1
+curl -H "Authorization: Bearer <your-jwt-token>" -X DELETE http://localhost:8080/api/v1/users/1
 ```
 
 ### Activate User
@@ -244,7 +304,7 @@ PATCH /api/v1/users/{id}/activate
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X PATCH http://localhost:8080/api/v1/users/1/activate
+curl -H "Authorization: Bearer <your-jwt-token>" -X PATCH http://localhost:8080/api/v1/users/1/activate
 ```
 
 ### Deactivate User
@@ -255,7 +315,7 @@ PATCH /api/v1/users/{id}/deactivate
 
 Example:
 ```bash
-curl -u hiipa:hiipa -X PATCH http://localhost:8080/api/v1/users/1/deactivate
+curl -H "Authorization: Bearer <your-jwt-token>" -X PATCH http://localhost:8080/api/v1/users/1/deactivate
 ```
 
 ## H2 Console
@@ -287,6 +347,11 @@ The application can be configured via `application.properties` or environment va
 - `HIIP_ADMIN_EMAIL` - Admin email (default: `admin@example.com`)
 - `HIIP_ADMIN_RESET_ON_STARTUP` - Reset admin user credentials on every startup (default: `true`)
 
+### JWT Configuration
+- `HIIP_JWT_SECRET` - JWT signing secret key (default: auto-generated, **must be set in production**)
+- `HIIP_JWT_EXPIRATION` - JWT token expiration time in milliseconds (default: `86400000` - 24 hours)
+- `HIIP_JWT_REFRESH_EXPIRATION` - Refresh token expiration time in milliseconds (default: `604800000` - 7 days)
+
 ### Example with Environment Variables
 
 ```bash
@@ -294,6 +359,8 @@ export HIIP_ADMIN_USERNAME=myadmin
 export HIIP_ADMIN_PASSWORD=mysecretpassword
 export HIIP_ADMIN_RESET_ON_STARTUP=false
 export HIIP_H2_CONSOLE_ENABLED=false
+export HIIP_JWT_SECRET=myVerySecureSecretKeyThatIsAtLeast256BitsLong1234567890
+export HIIP_JWT_EXPIRATION=3600000
 java -jar target/data-storage-1.0.0.jar
 ```
 
@@ -323,6 +390,7 @@ podman run -p 8080:8080 \
   -e HIIP_ADMIN_PASSWORD=mysecretpassword \
   -e HIIP_ADMIN_RESET_ON_STARTUP=false \
   -e HIIP_H2_CONSOLE_ENABLED=false \
+  -e HIIP_JWT_SECRET=myVerySecureSecretKeyThatIsAtLeast256BitsLong1234567890 \
   hiit
 ```
 
