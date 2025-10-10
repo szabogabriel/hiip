@@ -26,6 +26,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/data/**")).authenticated()
+                .requestMatchers(new AntPathRequestMatcher("/api/users/**")).authenticated()
                 .anyRequest().permitAll()
             )
             .httpBasic(Customizer.withDefaults())

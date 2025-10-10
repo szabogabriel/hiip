@@ -130,6 +130,125 @@ Example:
 curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/data/1
 ```
 
+## User Management API
+
+**Note: All user management endpoints require admin privileges. Only users with `isAdmin=true` can access these endpoints.**
+
+### Get All Users
+
+```bash
+GET /api/users
+```
+
+Optional parameter: `includeInactive=true` to include deactivated users.
+
+Example:
+```bash
+curl -u hiipa:hiipa "http://localhost:8080/api/users"
+curl -u hiipa:hiipa "http://localhost:8080/api/users?includeInactive=true"
+```
+
+### Get User by ID
+
+```bash
+GET /api/users/{id}
+```
+
+Example:
+```bash
+curl -u hiipa:hiipa http://localhost:8080/api/users/1
+```
+
+### Get User by Username
+
+```bash
+GET /api/users/username/{username}
+```
+
+Example:
+```bash
+curl -u hiipa:hiipa http://localhost:8080/api/users/username/hiipa
+```
+
+### Create User
+
+```bash
+POST /api/users
+Content-Type: application/json
+
+{
+  "username": "newuser",
+  "password": "password123",
+  "email": "user@example.com",
+  "isAdmin": false,
+  "isActive": true
+}
+```
+
+Example:
+```bash
+curl -u hiipa:hiipa -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"newuser","password":"password123","email":"user@example.com","isAdmin":false}'
+```
+
+### Update User
+
+```bash
+PUT /api/users/{id}
+Content-Type: application/json
+
+{
+  "username": "updateduser",
+  "password": "newpassword",
+  "email": "updated@example.com",
+  "isAdmin": true,
+  "isActive": true
+}
+```
+
+Example:
+```bash
+curl -u hiipa:hiipa -X PUT http://localhost:8080/api/users/1 \
+  -H "Content-Type: application/json" \
+  -d '{"username":"updateduser","email":"updated@example.com","isAdmin":true}'
+```
+
+### Delete User (Soft Delete)
+
+```bash
+DELETE /api/users/{id}
+```
+
+This sets the user's `isActive` flag to `false` instead of permanently deleting the user.
+
+Example:
+```bash
+curl -u hiipa:hiipa -X DELETE http://localhost:8080/api/users/1
+```
+
+### Activate User
+
+```bash
+PATCH /api/users/{id}/activate
+```
+
+Example:
+```bash
+curl -u hiipa:hiipa -X PATCH http://localhost:8080/api/users/1/activate
+```
+
+### Deactivate User
+
+```bash
+PATCH /api/users/{id}/deactivate
+```
+
+Example:
+```bash
+curl -u hiipa:hiipa -X PATCH http://localhost:8080/api/users/1/deactivate
+```
+
 ## H2 Console
 
 The H2 database console is available for development and testing:
