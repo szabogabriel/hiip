@@ -1,5 +1,6 @@
 package com.hiip.datastorage.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -14,7 +15,8 @@ public class DataStorage {
     private Long id;
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    private String content;
+    @Convert(converter = JsonNodeConverter.class)
+    private JsonNode content;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "data_tags", joinColumns = @JoinColumn(name = "data_id"))
@@ -47,7 +49,7 @@ public class DataStorage {
     public DataStorage() {
     }
 
-    public DataStorage(String content, Set<String> tags, String owner) {
+    public DataStorage(JsonNode content, Set<String> tags, String owner) {
         this.content = content;
         this.tags = tags != null ? tags : new HashSet<>();
         this.owner = owner;
@@ -61,11 +63,11 @@ public class DataStorage {
         this.id = id;
     }
 
-    public String getContent() {
+    public JsonNode getContent() {
         return content;
     }
 
-    public void setContent(String content) {
+    public void setContent(JsonNode content) {
         this.content = content;
     }
 

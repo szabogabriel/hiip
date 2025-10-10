@@ -1,24 +1,25 @@
 package com.hiip.datastorage.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Set;
 
 public class DataStorageRequest {
-    private String content;
+    private JsonNode content;
     private Set<String> tags;
 
     public DataStorageRequest() {
     }
 
-    public DataStorageRequest(String content, Set<String> tags) {
+    public DataStorageRequest(JsonNode content, Set<String> tags) {
         this.content = content;
         this.tags = tags;
     }
 
-    public String getContent() {
+    public JsonNode getContent() {
         return content;
     }
 
-    public void setContent(String content) {
+    public void setContent(JsonNode content) {
         this.content = content;
     }
 

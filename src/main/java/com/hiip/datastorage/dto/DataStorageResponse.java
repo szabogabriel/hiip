@@ -1,12 +1,13 @@
 package com.hiip.datastorage.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.hiip.datastorage.entity.DataStorage;
 import java.time.LocalDateTime;
 import java.util.Set;
 
 public class DataStorageResponse {
     private Long id;
-    private String content;
+    private JsonNode content;
     private Set<String> tags;
     private String owner;
     private LocalDateTime createdAt;
@@ -32,11 +33,11 @@ public class DataStorageResponse {
         this.id = id;
     }
 
-    public String getContent() {
+    public JsonNode getContent() {
         return content;
     }
 
-    public void setContent(String content) {
+    public void setContent(JsonNode content) {
         this.content = content;
     }
 
