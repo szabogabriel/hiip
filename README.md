@@ -276,6 +276,7 @@ The application can be configured via `application.properties` or environment va
 - `HIIP_DATASOURCE_DRIVER` - Database driver (default: `org.h2.Driver`)
 - `HIIP_DATASOURCE_USERNAME` - Database username (default: `sa`)
 - `HIIP_DATASOURCE_PASSWORD` - Database password (default: empty)
+- `HIIP_HIBERNATE_DIALECT` - Setting the Hibernate dialect (default: `org.hibernate.dialect.H2Dialect`)
 
 ### H2 Console
 - `HIIP_H2_CONSOLE_ENABLED` - Enable/disable H2 console (default: `true`)
