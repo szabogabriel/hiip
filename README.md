@@ -394,7 +394,7 @@ A `Containerfile` is provided for containerized deployment using Podman or Docke
 mvn clean package
 
 # Build the container image
-podman build -t hiit .
+podman build -t hiip .
 ```
 
 ### Running with Podman/Docker
@@ -406,7 +406,7 @@ JWT_SECRET=$(./scripts/generate-jwt-secret.sh | grep "HIIP_JWT_SECRET=" | cut -d
 # Run with minimal configuration
 podman run -p 8080:8080 \
   -e HIIP_JWT_SECRET="$JWT_SECRET" \
-  hiit
+  hiip
 
 # Run with custom environment variables
 podman run -p 8080:8080 \
@@ -415,12 +415,12 @@ podman run -p 8080:8080 \
   -e HIIP_ADMIN_RESET_ON_STARTUP=false \
   -e HIIP_H2_CONSOLE_ENABLED=false \
   -e HIIP_JWT_SECRET="$JWT_SECRET" \
-  hiit
+  hiip
 
 # Alternative: Auto-generate JWT secret on startup (NOT recommended for production)
 podman run -p 8080:8080 \
   -e GENERATE_JWT_SECRET_ON_START=true \
-  hiit
+  hiip
 ```
 
 ### Startup Script Options
