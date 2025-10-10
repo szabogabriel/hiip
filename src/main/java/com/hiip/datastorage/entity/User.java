@@ -22,6 +22,9 @@ public class User {
     @Column(nullable = true)
     private Boolean isAdmin = false;
 
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
     public User() {
     }
 
@@ -74,5 +77,13 @@ public class User {
 
     public void setIsAdmin(Boolean isAdmin) {
         this.isAdmin = isAdmin;
+    }
+
+    public void setActive(Boolean isActive) {
+        this.isActive = isActive;
+    }
+
+    public Boolean getIsActive() {
+        return isActive;
     }
 }
