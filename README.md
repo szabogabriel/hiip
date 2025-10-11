@@ -176,7 +176,7 @@ Include the JWT token in the Authorization header for all authenticated requests
 
 ```bash
 Authorization: Bearer <your-jwt-token>
-```
+```gg
 
 ### Password Security
 
@@ -209,7 +209,9 @@ The application enforces strong password requirements and provides comprehensive
 - **One-time use**: Tokens are invalidated after successful password reset
 - **Account unlock**: Password reset automatically unlocks locked accounts
 
-### API VersioningThe API uses URL-based versioning to ensure backward compatibility. The current version is `v1` and all endpoints are prefixed with `/api/v1/`. This allows for future API evolution while maintaining support for existing clients.
+### API Versioning
+
+The API uses URL-based versioning to ensure backward compatibility. The current version is `v1` and all endpoints are prefixed with `/api/v1/`. This allows for future API evolution while maintaining support for existing clients.
 
 - Current API version: **v1**
 - Base URL pattern: `http://localhost:8080/api/v1/`
@@ -467,6 +469,192 @@ export HIIP_JWT_SECRET="your-generated-secret-here"
 ```
 
 **⚠️ Security Note**: The JWT secret is now **required** and has no default value. You must generate and set a secure secret before starting the application.
+
+## External Configuration
+
+Spring Boot supports multiple ways to externalize configuration. Here are the recommended approaches for production deployments:
+
+### 1. External application.properties File
+
+Create an external configuration file outside your JAR to override default settings:
+
+**Step 1**: Create a configuration file (e.g., `/etc/hiip/application.properties`):
+
+```properties
+# Production Database Configuration
+spring.datasource.url=jdbc:postgresql://localhost:5432/hiipdb
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.datasource.username=hiip_user
+spring.datasource.password=secure_password
+
+# Disable H2 Console in production
+spring.h2.console.enabled=false
+
+# Admin User Configuration
+hiip.admin.username=admin
+hiip.admin.password=very-secure-admin-password
+hiip.admin.email=admin@yourdomain.com
+hiip.admin.reset-on-startup=false
+
+# JWT Configuration - Use strong secrets in production
+hiip.jwt.secret=your-very-long-and-secure-jwt-secret-key-here
+hiip.jwt.expiration=3600000
+hiip.jwt.refresh-expiration=604800000
+
+# Security Configuration
+hiip.security.max-failed-attempts=3
+hiip.security.lockout-duration-minutes=60
+hiip.security.password-history-count=10
+
+# Server Configuration
+server.port=8080
+server.servlet.context-path=/api
+
+# Logging Configuration
+logging.level.com.hiip=INFO
+logging.file.name=/var/log/hiip/application.log
+```
+
+**Step 2**: Run the application with the external configuration:
+
+```bash
+# Method 1: Using --spring.config.location
+java -jar data-storage-1.0.0.jar --spring.config.location=/etc/hiip/application.properties
+
+# Method 2: Using --spring.config.additional-location (combines with internal config)
+java -jar data-storage-1.0.0.jar --spring.config.additional-location=/etc/hiip/
+
+# Method 3: Using spring.config.name for different config file names
+java -jar data-storage-1.0.0.jar --spring.config.name=hiip-prod --spring.config.location=/etc/hiip/
+```
+
+### 2. Configuration Directory Structure
+
+For more complex deployments, organize configuration files by environment:
+
+```
+/etc/hiip/
+├── application.properties              # Common configuration
+├── application-development.properties  # Development overrides
+├── application-staging.properties      # Staging overrides
+├── application-production.properties   # Production overrides
+└── logback-spring.xml                 # Custom logging configuration
+```
+
+**Example application-production.properties**:
+```properties
+# Production-specific settings
+spring.datasource.url=jdbc:postgresql://prod-db:5432/hiip
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+
+# Security settings
+hiip.admin.reset-on-startup=false
+hiip.security.max-failed-attempts=3
+hiip.security.lockout-duration-minutes=120
+
+# Performance settings
+spring.jpa.properties.hibernate.jdbc.batch_size=20
+spring.jpa.properties.hibernate.order_inserts=true
+spring.jpa.properties.hibernate.order_updates=true
+
+# Monitoring
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=never
+```
+
+**Run with profile**:
+```bash
+java -jar data-storage-1.0.0.jar \
+  --spring.profiles.active=production \
+  --spring.config.location=/etc/hiip/
+```
+
+### 3. Environment Variables Only
+
+For containerized deployments, use environment variables:
+
+```bash
+# Docker/Podman example
+docker run -d \
+  -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/hiip \
+  -e SPRING_DATASOURCE_USERNAME=hiip_user \
+  -e SPRING_DATASOURCE_PASSWORD=secure_password \
+  -e HIIP_JWT_SECRET=your-jwt-secret \
+  -e HIIP_ADMIN_USERNAME=admin \
+  -e HIIP_ADMIN_PASSWORD=admin-password \
+  -e SPRING_PROFILES_ACTIVE=production \
+  hiip:latest
+```
+
+### 4. Configuration Precedence
+
+Spring Boot follows this configuration precedence (highest to lowest):
+
+1. Command line arguments (`--server.port=9000`)
+2. Environment variables (`SERVER_PORT=9000`)
+3. External application.properties (`--spring.config.location`)
+4. Profile-specific properties (`application-{profile}.properties`)
+5. Internal application.properties (in JAR)
+
+### 5. Configuration Validation
+
+**Verify your configuration**:
+```bash
+# Check which configuration files are loaded
+java -jar data-storage-1.0.0.jar --debug
+
+# Test with dry-run (validate configuration without starting)
+java -jar data-storage-1.0.0.jar --spring.main.web-application-type=none
+
+# View effective configuration
+java -jar data-storage-1.0.0.jar --spring.output.ansi.enabled=always
+```
+
+### 6. Systemd Service Example
+
+For Linux deployments with systemd:
+
+**/etc/systemd/system/hiip.service**:
+```ini
+[Unit]
+Description=HIIP Data Storage Service
+After=network.target
+
+[Service]
+Type=simple
+User=hiip
+Group=hiip
+WorkingDirectory=/opt/hiip
+ExecStart=/usr/bin/java -jar /opt/hiip/data-storage-1.0.0.jar --spring.config.location=/etc/hiip/application.properties
+Environment=HIIP_JWT_SECRET_FILE=/etc/hiip/jwt.secret
+Restart=always
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/hiip
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Commands**:
+```bash
+# Enable and start service
+sudo systemctl enable hiip
+sudo systemctl start hiip
+
+# Check status
+sudo systemctl status hiip
+
+# View logs
+sudo journalctl -u hiip -f
+```
 
 ### Example with Environment Variables
 
