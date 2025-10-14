@@ -3,6 +3,7 @@ let authToken = localStorage.getItem('hiip_token') || '';
 let currentUser = localStorage.getItem('hiip_user') || '';
 let currentTags = [];
 let dataCache = [];
+let categoriesCache = [];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -82,6 +83,9 @@ function showDashboard() {
     document.getElementById('loginPage').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
     document.getElementById('usernameDisplay').textContent = currentUser;
+    
+    // Load categories for the combo box
+    loadCategories();
 }
 
 // Tag Input Handlers
@@ -134,11 +138,60 @@ function focusTagInput() {
     document.getElementById('tagInput').focus();
 }
 
+// Load Categories
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/v1/categories/my-categories', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            categoriesCache = await response.json();
+            populateCategoryDatalist();
+        } else if (response.status === 401) {
+            handleLogout();
+        } else {
+            console.error('Failed to load categories');
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+}
+
+function populateCategoryDatalist() {
+    const datalist = document.getElementById('categorySuggestions');
+    datalist.innerHTML = '';
+    
+    // Sort categories by path for better UX
+    const sortedCategories = [...categoriesCache].sort((a, b) => 
+        a.path.localeCompare(b.path)
+    );
+    
+    sortedCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.path;
+        
+        // Add description with access info
+        let description = category.isGlobal ? ' (Global)' : ' (My category)';
+        if (category.sharedWith && category.sharedWith.length > 0) {
+            description = ' (Shared)';
+        }
+        option.textContent = category.path + description;
+        
+        datalist.appendChild(option);
+    });
+}
+
 // Create Data Handler
 async function handleCreateData(event) {
     event.preventDefault();
     
     const content = document.getElementById('dataContent').value.trim();
+    const category = document.getElementById('categoryInput').value.trim();
     const alertDiv = document.getElementById('createAlert');
     
     if (!content) {
@@ -160,10 +213,12 @@ async function handleCreateData(event) {
     // Debug logging
     const requestData = {
         content: jsonContent,
-        tags: currentTags
+        tags: currentTags,
+        category: category || null
     };
     console.log('Sending data:', requestData);
     console.log('Tags array:', currentTags);
+    console.log('Category:', category);
     
     try {
         const response = await fetch('/api/v1/data', {
@@ -180,9 +235,10 @@ async function handleCreateData(event) {
             alertDiv.innerHTML = '<div class="alert alert-success">✅ Data created successfully!</div>';
             clearCreateForm();
             
-            // Refresh data list
+            // Refresh data list and categories
             setTimeout(() => {
                 refreshData();
+                loadCategories();
                 alertDiv.innerHTML = '';
             }, 2000);
         } else if (response.status === 401) {
@@ -198,6 +254,7 @@ async function handleCreateData(event) {
 
 function clearCreateForm() {
     document.getElementById('dataContent').value = '';
+    document.getElementById('categoryInput').value = '';
     currentTags = [];
     renderTags();
 }
@@ -262,6 +319,10 @@ function renderDataList() {
             ? item.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
             : '<span style="color: #999;">No tags</span>';
         
+        const categoryHtml = item.category 
+            ? `<div class="data-item-category">📁 ${item.category}</div>` 
+            : '';
+        
         const contentStr = JSON.stringify(item.content, null, 2);
         
         html += `
@@ -273,6 +334,7 @@ function renderDataList() {
                         <button class="button danger" onclick="deleteData(${item.id})">Delete</button>
                     </div>
                 </div>
+                ${categoryHtml}
                 <div class="data-item-content">${contentStr}</div>
                 <div class="data-item-tags">${tagsHtml}</div>
                 <div class="data-item-meta">

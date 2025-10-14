@@ -91,16 +91,17 @@ public class DataStorageController {
 
     @GetMapping("/search")
     @Operation(
-        summary = "Search data by tags",
-        description = "Search data storage entries by one or more tags"
+        summary = "Search data by tags and/or category",
+        description = "Search data storage entries by tags and/or category. Both parameters are optional."
     )
     @ApiResponse(responseCode = "200", description = "Search results retrieved successfully")
-    public ResponseEntity<List<DataStorageResponse>> searchByTags(
-            @RequestParam List<String> tags,
+    public ResponseEntity<List<DataStorageResponse>> searchData(
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) String category,
             Authentication authentication) {
         
         String owner = authentication.getName();
-        List<DataStorageResponse> data = dataStorageFacadeService.searchByTags(tags, owner);
+        List<DataStorageResponse> data = dataStorageFacadeService.searchData(tags, category, owner);
         
         return ResponseEntity.ok(data);
     }

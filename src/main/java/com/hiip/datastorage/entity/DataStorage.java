@@ -23,6 +23,10 @@ public class DataStorage {
     @Column(name = "tag")
     private Set<String> tags = new HashSet<>();
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     @Column(nullable = false)
     private String owner;
 
@@ -49,10 +53,11 @@ public class DataStorage {
     public DataStorage() {
     }
 
-    public DataStorage(JsonNode content, Set<String> tags, String owner) {
+    public DataStorage(JsonNode content, Set<String> tags, String owner, Category category) {
         this.content = content;
         this.tags = tags != null ? tags : new HashSet<>();
         this.owner = owner;
+        this.category = category;
     }
 
     public Long getId() {
@@ -77,6 +82,14 @@ public class DataStorage {
 
     public void setTags(Set<String> tags) {
         this.tags = tags;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
     }
 
     public String getOwner() {

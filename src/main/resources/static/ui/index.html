@@ -60,6 +60,17 @@
                     </div>
                     
                     <div class="form-group">
+                        <label for="categoryInput">Category (use / for hierarchy)</label>
+                        <input type="text" id="categoryInput" list="categorySuggestions" 
+                               placeholder="e.g., electronics/computers/laptops or select from existing" 
+                               autocomplete="off">
+                        <datalist id="categorySuggestions">
+                            <!-- Populated dynamically -->
+                        </datalist>
+                        <small style="color: #666; font-size: 0.9rem;">Select an existing category or type a new one. Use slashes for hierarchy.</small>
+                    </div>
+                    
+                    <div class="form-group">
                         <label for="dataTags">Tags</label>
                         <div class="tags-input" id="tagsContainer" onclick="focusTagInput()">
                             <input type="text" id="tagInput" placeholder="Type and press Enter" 

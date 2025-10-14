@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.hiip.datastorage.dto.DataStorageRequest;
 import com.hiip.datastorage.dto.DataStorageResponse;
+import com.hiip.datastorage.entity.Category;
 import com.hiip.datastorage.entity.DataStorage;
 
 /**
@@ -27,6 +28,9 @@ public class DataStorageFacadeService {
     @Autowired
     private DataStorageService dataStorageService;
 
+    @Autowired
+    private CategoryService categoryService;
+
     /**
      * Create new data storage entry.
      * 
@@ -39,11 +43,20 @@ public class DataStorageFacadeService {
         logger.info("Content: {}", request.getContent());
         logger.info("Tags: {}", request.getTags());
         logger.info("Tags size: {}", request.getTags() != null ? request.getTags().size() : "null");
+        logger.info("Category: {}", request.getCategory());
         
-        DataStorage dataStorage = new DataStorage(request.getContent(), request.getTags(), owner);
+        // Get or create category if provided
+        Category category = null;
+        if (request.getCategory() != null && !request.getCategory().trim().isEmpty()) {
+            category = categoryService.getOrCreateCategory(request.getCategory(), owner);
+            logger.info("Category resolved: {}", category != null ? category.getPath() : "null");
+        }
+        
+        DataStorage dataStorage = new DataStorage(request.getContent(), request.getTags(), owner, category);
         DataStorage saved = dataStorageService.createData(dataStorage);
         
-        logger.info("Saved data with ID: {}, tags: {}", saved.getId(), saved.getTags());
+        logger.info("Saved data with ID: {}, tags: {}, category: {}", 
+                saved.getId(), saved.getTags(), saved.getCategory() != null ? saved.getCategory().getPath() : "null");
         
         return new DataStorageResponse(saved);
     }
@@ -94,6 +107,35 @@ public class DataStorageFacadeService {
     }
 
     /**
+     * Search data storage entries by tags and/or category.
+     * Both parameters are optional.
+     * 
+     * @param tags the list of tags to search for (optional)
+     * @param categoryPath the category path to filter by (optional)
+     * @param owner the owner username
+     * @return list of data storage responses matching the criteria
+     */
+    public List<DataStorageResponse> searchData(List<String> tags, String categoryPath, String owner) {
+        logger.debug("Searching data with tags: {} and category: {} for owner: {}", tags, categoryPath, owner);
+        
+        // Resolve category if provided
+        Category category = null;
+        if (categoryPath != null && !categoryPath.trim().isEmpty()) {
+            // Try to find existing category, don't create new one for search
+            category = categoryService.findByPath(categoryPath);
+            if (category == null) {
+                logger.debug("Category not found: {}, returning empty results", categoryPath);
+                return List.of(); // Category doesn't exist, no results
+            }
+        }
+        
+        return dataStorageService.searchData(tags, category, owner)
+                .stream()
+                .map(DataStorageResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Update data storage entry.
      * 
      * @param id the data storage ID
@@ -105,8 +147,16 @@ public class DataStorageFacadeService {
         logger.info("Updating data with ID: {} for owner: {}", id, owner);
         logger.info("New content: {}", request.getContent());
         logger.info("New tags: {}", request.getTags());
+        logger.info("New category: {}", request.getCategory());
         
-        DataStorage updatedData = new DataStorage(request.getContent(), request.getTags(), owner);
+        // Get or create category if provided
+        Category category = null;
+        if (request.getCategory() != null && !request.getCategory().trim().isEmpty()) {
+            category = categoryService.getOrCreateCategory(request.getCategory(), owner);
+            logger.info("Category resolved: {}", category != null ? category.getPath() : "null");
+        }
+        
+        DataStorage updatedData = new DataStorage(request.getContent(), request.getTags(), owner, category);
         
         return dataStorageService.updateData(id, updatedData, owner)
                 .map(data -> {

@@ -349,6 +349,17 @@ body {
     border-left: 3px solid #667eea;
 }
 
+.data-item-category {
+    font-size: 0.9rem;
+    color: #667eea;
+    margin-bottom: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    background: #f0f2ff;
+    border-radius: 5px;
+    display: inline-block;
+    font-weight: 500;
+}
+
 .data-item-tags {
     margin-bottom: 0.75rem;
 }
