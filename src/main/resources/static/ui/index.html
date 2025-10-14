@@ -242,6 +242,16 @@
                 <span class="method get">GET</span>
                 <span>/actuator/info</span>
             </div>
+
+            <h4 style="margin-top: 1rem; color: #555;">API Documentation</h4>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/swagger-ui.html</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/v3/api-docs</span>
+            </div>
         </div>
 
         <div class="auth-section">
@@ -257,6 +267,7 @@
                 <button class="button" onclick="testLogin()">🔑 Test Login</button>
                 <button class="button secondary" onclick="testHealth()">💓 Check Health</button>
                 <button class="button secondary" onclick="testData()">📊 Get Data</button>
+                <button class="button secondary" onclick="openSwagger()">📖 Swagger UI</button>
             </div>
             
             <div id="status"></div>
@@ -268,6 +279,7 @@
                 <li>Click <strong>"Test Login"</strong> to authenticate and get a JWT token</li>
                 <li>The token will be stored automatically</li>
                 <li>Click <strong>"Get Data"</strong> to test authenticated endpoint</li>
+                <li>Click <strong>"Swagger UI"</strong> to explore the full API documentation</li>
                 <li>Use the token in your API requests: <code>Authorization: Bearer &lt;token&gt;</code></li>
             </ol>
         </div>
@@ -392,6 +404,10 @@ Error: ${error}</div>`;
 
 ${error.message}</div>`;
             }
+        }
+
+        function openSwagger() {
+            window.open('/swagger-ui.html', '_blank');
         }
 
         // Display current auth status on load

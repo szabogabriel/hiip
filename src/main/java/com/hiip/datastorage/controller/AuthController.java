@@ -31,8 +31,17 @@ import com.hiip.datastorage.service.EmailService;
 import com.hiip.datastorage.service.PasswordResetService;
 import com.hiip.datastorage.service.UserService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "Authentication and user management endpoints")
 public class AuthController {
 
     @Autowired
@@ -60,6 +69,16 @@ public class AuthController {
     private Long jwtExpiration;
 
     @PostMapping("/login")
+    @Operation(
+        summary = "Authenticate user",
+        description = "Authenticate user with username and password, returns JWT access and refresh tokens"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Authentication successful",
+            content = @Content(schema = @Schema(implementation = JwtResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Invalid credentials"),
+        @ApiResponse(responseCode = "423", description = "Account locked due to too many failed attempts")
+    })
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
         String username = loginRequest.getUsername();
         
