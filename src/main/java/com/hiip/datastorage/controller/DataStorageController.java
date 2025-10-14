@@ -4,6 +4,8 @@ import com.hiip.datastorage.dto.DataStorageRequest;
 import com.hiip.datastorage.dto.DataStorageResponse;
 import com.hiip.datastorage.entity.DataStorage;
 import com.hiip.datastorage.service.DataStorageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/data")
 public class DataStorageController {
 
+    private static final Logger logger = LoggerFactory.getLogger(DataStorageController.class);
+
     @Autowired
     private DataStorageService dataStorageService;
 
@@ -24,9 +28,16 @@ public class DataStorageController {
             @RequestBody DataStorageRequest request,
             Authentication authentication) {
         
+        logger.info("Received createData request");
+        logger.info("Content: {}", request.getContent());
+        logger.info("Tags: {}", request.getTags());
+        logger.info("Tags size: {}", request.getTags() != null ? request.getTags().size() : "null");
+        
         String owner = authentication.getName();
         DataStorage dataStorage = new DataStorage(request.getContent(), request.getTags(), owner);
         DataStorage saved = dataStorageService.createData(dataStorage);
+        
+        logger.info("Saved data with ID: {}, tags: {}", saved.getId(), saved.getTags());
         
         return ResponseEntity.status(HttpStatus.CREATED).body(new DataStorageResponse(saved));
     }
