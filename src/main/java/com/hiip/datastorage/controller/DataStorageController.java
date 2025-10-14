@@ -2,104 +2,149 @@ package com.hiip.datastorage.controller;
 
 import com.hiip.datastorage.dto.DataStorageRequest;
 import com.hiip.datastorage.dto.DataStorageResponse;
-import com.hiip.datastorage.entity.DataStorage;
-import com.hiip.datastorage.service.DataStorageService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.hiip.datastorage.service.DataStorageFacadeService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
-import java.util.stream.Collectors;
 
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * REST controller for data storage operations.
+ * This controller handles HTTP requests and delegates business logic to DataStorageFacadeService.
+ */
 @RestController
 @RequestMapping("/api/v1/data")
+@Tag(name = "Data Storage", description = "Data storage management endpoints")
+@SecurityRequirement(name = "bearerAuth")
 public class DataStorageController {
 
-    private static final Logger logger = LoggerFactory.getLogger(DataStorageController.class);
-
     @Autowired
-    private DataStorageService dataStorageService;
+    private DataStorageFacadeService dataStorageFacadeService;
 
     @PostMapping
+    @Operation(
+        summary = "Create new data",
+        description = "Create a new data storage entry with content and tags"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Data created successfully",
+            content = @Content(schema = @Schema(implementation = DataStorageResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<DataStorageResponse> createData(
             @RequestBody DataStorageRequest request,
             Authentication authentication) {
         
-        logger.info("Received createData request");
-        logger.info("Content: {}", request.getContent());
-        logger.info("Tags: {}", request.getTags());
-        logger.info("Tags size: {}", request.getTags() != null ? request.getTags().size() : "null");
-        
         String owner = authentication.getName();
-        DataStorage dataStorage = new DataStorage(request.getContent(), request.getTags(), owner);
-        DataStorage saved = dataStorageService.createData(dataStorage);
+        DataStorageResponse response = dataStorageFacadeService.createData(request, owner);
         
-        logger.info("Saved data with ID: {}, tags: {}", saved.getId(), saved.getTags());
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(new DataStorageResponse(saved));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
+    @Operation(
+        summary = "Get data by ID",
+        description = "Retrieve a specific data storage entry by its ID"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Data retrieved successfully",
+            content = @Content(schema = @Schema(implementation = DataStorageResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Data not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<DataStorageResponse> getDataById(
             @PathVariable Long id,
             Authentication authentication) {
         
         String owner = authentication.getName();
-        return dataStorageService.getDataById(id, owner)
-                .map(data -> ResponseEntity.ok(new DataStorageResponse(data)))
+        Optional<DataStorageResponse> response = dataStorageFacadeService.getDataById(id, owner);
+        
+        return response.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
+    @Operation(
+        summary = "Get all data",
+        description = "Retrieve all data storage entries for the authenticated user"
+    )
+    @ApiResponse(responseCode = "200", description = "Data list retrieved successfully")
     public ResponseEntity<List<DataStorageResponse>> getAllData(Authentication authentication) {
         String owner = authentication.getName();
-        List<DataStorageResponse> data = dataStorageService.getAllData(owner)
-                .stream()
-                .map(DataStorageResponse::new)
-                .collect(Collectors.toList());
+        List<DataStorageResponse> data = dataStorageFacadeService.getAllData(owner);
         
         return ResponseEntity.ok(data);
     }
 
     @GetMapping("/search")
+    @Operation(
+        summary = "Search data by tags",
+        description = "Search data storage entries by one or more tags"
+    )
+    @ApiResponse(responseCode = "200", description = "Search results retrieved successfully")
     public ResponseEntity<List<DataStorageResponse>> searchByTags(
             @RequestParam List<String> tags,
             Authentication authentication) {
         
         String owner = authentication.getName();
-        List<DataStorageResponse> data = dataStorageService.searchByTags(tags, owner)
-                .stream()
-                .map(DataStorageResponse::new)
-                .collect(Collectors.toList());
+        List<DataStorageResponse> data = dataStorageFacadeService.searchByTags(tags, owner);
         
         return ResponseEntity.ok(data);
     }
 
     @PutMapping("/{id}")
+    @Operation(
+        summary = "Update data",
+        description = "Update an existing data storage entry"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Data updated successfully",
+            content = @Content(schema = @Schema(implementation = DataStorageResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Data not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<DataStorageResponse> updateData(
             @PathVariable Long id,
             @RequestBody DataStorageRequest request,
             Authentication authentication) {
         
         String owner = authentication.getName();
-        DataStorage updatedData = new DataStorage(request.getContent(), request.getTags(), owner);
+        Optional<DataStorageResponse> response = dataStorageFacadeService.updateData(id, request, owner);
         
-        return dataStorageService.updateData(id, updatedData, owner)
-                .map(data -> ResponseEntity.ok(new DataStorageResponse(data)))
+        return response.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> hideData(
+    @Operation(
+        summary = "Delete data",
+        description = "Delete (hide) a data storage entry"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Data deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Data not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<Void> deleteData(
             @PathVariable Long id,
             Authentication authentication) {
         
         String owner = authentication.getName();
-        boolean hidden = dataStorageService.hideData(id, owner);
+        boolean deleted = dataStorageFacadeService.deleteData(id, owner);
         
-        return hidden ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 }
