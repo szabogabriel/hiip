@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HIIP - Data Storage Application</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 5px;
+            margin: 1.5rem 0;
+        }
+
+        .section h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .endpoint {
+            font-family: 'Courier New', monospace;
+            background: #e9ecef;
+            padding: 0.75rem;
+            border-radius: 3px;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .method {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 0.75rem;
+            min-width: 60px;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .method.post { background: #28a745; }
+        .method.get { background: #007bff; }
+        .method.put { background: #ffc107; color: #333; }
+        .method.delete { background: #dc3545; }
+
+        .auth-section {
+            border-top: 1px solid #ddd;
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .button {
+            background: #667eea;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.25rem;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #5a67d8;
+        }
+
+        .button.secondary {
+            background: #6c757d;
+        }
+
+        .button.secondary:hover {
+            background: #5a6268;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .success { 
+            background: #d4edda; 
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .error { 
+            background: #f8d7da; 
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .credentials {
+            background: #fff3cd;
+            padding: 1rem;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+            margin: 1rem 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1.5rem;
+            }
+
+            .endpoint {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .method {
+                margin-bottom: 0.5rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 HIIP Data Storage</h1>
+        <p class="subtitle">High-Performance Intelligent Information Platform</p>
+        
+        <div class="section">
+            <h3>📡 API Endpoints</h3>
+            
+            <h4 style="margin-top: 1rem; color: #555;">Authentication</h4>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/v1/auth/login</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/v1/auth/refresh</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/v1/auth/logout</span>
+            </div>
+
+            <h4 style="margin-top: 1rem; color: #555;">Data Storage</h4>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/v1/data</span>
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/v1/data</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/v1/data/{id}</span>
+            </div>
+            <div class="endpoint">
+                <span class="method put">PUT</span>
+                <span>/api/v1/data/{id}</span>
+            </div>
+            <div class="endpoint">
+                <span class="method delete">DELETE</span>
+                <span>/api/v1/data/{id}</span>
+            </div>
+
+            <h4 style="margin-top: 1rem; color: #555;">Users</h4>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/v1/users</span>
+            </div>
+
+            <h4 style="margin-top: 1rem; color: #555;">Health & Monitoring</h4>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/actuator/health</span>
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/actuator/info</span>
+            </div>
+        </div>
+
+        <div class="auth-section">
+            <h3>🔐 Authentication & Testing</h3>
+            
+            <div class="credentials">
+                <strong>Default Credentials:</strong><br>
+                Username: <code>hiipa</code><br>
+                Password: <code>hiipa</code>
+            </div>
+            
+            <div class="button-group">
+                <button class="button" onclick="testLogin()">🔑 Test Login</button>
+                <button class="button secondary" onclick="testHealth()">💓 Check Health</button>
+                <button class="button secondary" onclick="testData()">📊 Get Data</button>
+            </div>
+            
+            <div id="status"></div>
+        </div>
+
+        <div class="section">
+            <h3>🚀 Quick Start</h3>
+            <ol style="line-height: 2; color: #555;">
+                <li>Click <strong>"Test Login"</strong> to authenticate and get a JWT token</li>
+                <li>The token will be stored automatically</li>
+                <li>Click <strong>"Get Data"</strong> to test authenticated endpoint</li>
+                <li>Use the token in your API requests: <code>Authorization: Bearer &lt;token&gt;</code></li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('hiip_token') || '';
+
+        async function testLogin() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<div class="status info">🔄 Authenticating...</div>';
+            
+            try {
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'hiipa',
+                        password: 'hiipa'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.accessToken;
+                    localStorage.setItem('hiip_token', authToken);
+                    
+                    statusDiv.innerHTML = `<div class="status success">✅ Authentication Successful!
+
+Token received and stored.
+Username: ${data.username}
+Token Type: ${data.tokenType}
+Expires In: ${data.expiresIn} seconds
+
+Access Token (first 50 chars):
+${authToken.substring(0, 50)}...
+
+You can now use authenticated endpoints!</div>`;
+                } else {
+                    const error = await response.text();
+                    statusDiv.innerHTML = `<div class="status error">❌ Authentication Failed
+
+Status: ${response.status}
+Error: ${error}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Request Error
+
+${error.message}</div>`;
+            }
+        }
+
+        async function testHealth() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<div class="status info">🔄 Checking application health...</div>';
+            
+            try {
+                const response = await fetch('/actuator/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `<div class="status success">✅ Application Health Check
+
+Status: ${data.status}
+
+${JSON.stringify(data, null, 2)}</div>`;
+                } else {
+                    statusDiv.innerHTML = `<div class="status error">❌ Health Check Failed
+
+Status: ${response.status}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Request Error
+
+${error.message}</div>`;
+            }
+        }
+
+        async function testData() {
+            const statusDiv = document.getElementById('status');
+            
+            if (!authToken) {
+                statusDiv.innerHTML = '<div class="status error">❌ Not Authenticated\n\nPlease login first by clicking "Test Login"</div>';
+                return;
+            }
+
+            statusDiv.innerHTML = '<div class="status info">🔄 Fetching data...</div>';
+            
+            try {
+                const response = await fetch('/api/v1/data', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.innerHTML = `<div class="status success">✅ Data Retrieved Successfully
+
+Total Records: ${data.length}
+
+${JSON.stringify(data, null, 2)}</div>`;
+                } else if (response.status === 401) {
+                    authToken = '';
+                    localStorage.removeItem('hiip_token');
+                    statusDiv.innerHTML = `<div class="status error">❌ Authentication Expired
+
+Your token has expired. Please login again.</div>`;
+                } else {
+                    const error = await response.text();
+                    statusDiv.innerHTML = `<div class="status error">❌ Request Failed
+
+Status: ${response.status}
+Error: ${error}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Request Error
+
+${error.message}</div>`;
+            }
+        }
+
+        // Display current auth status on load
+        window.addEventListener('load', function() {
+            if (authToken) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">ℹ️ Authentication token found in storage.\n\nYou can use authenticated endpoints.</div>';
+            }
+        });
+    </script>
+</body>
+</html>
