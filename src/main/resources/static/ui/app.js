@@ -4,6 +4,7 @@ let currentUser = localStorage.getItem('hiip_user') || '';
 let currentTags = [];
 let dataCache = [];
 let categoriesCache = [];
+let searchTags = [];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -164,7 +165,9 @@ async function loadCategories() {
 
 function populateCategoryDatalist() {
     const datalist = document.getElementById('categorySuggestions');
+    const searchDatalist = document.getElementById('searchCategorySuggestions');
     datalist.innerHTML = '';
+    searchDatalist.innerHTML = '';
     
     // Sort categories by path for better UX
     const sortedCategories = [...categoriesCache].sort((a, b) => 
@@ -183,6 +186,10 @@ function populateCategoryDatalist() {
         option.textContent = category.path + description;
         
         datalist.appendChild(option);
+        
+        // Also add to search datalist
+        const searchOption = option.cloneNode(true);
+        searchDatalist.appendChild(searchOption);
     });
 }
 
@@ -383,4 +390,116 @@ async function deleteData(id) {
     } catch (error) {
         alertDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${error.message}</div>`;
     }
+}
+
+// Search Tag Input Handlers
+function handleSearchTagInput(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const input = document.getElementById('searchTagsInput');
+        const value = input.value.trim();
+        
+        if (value && !searchTags.includes(value)) {
+            searchTags.push(value);
+            renderSearchTags();
+            input.value = '';
+        }
+    }
+}
+
+function removeSearchTag(tag) {
+    searchTags = searchTags.filter(t => t !== tag);
+    renderSearchTags();
+}
+
+function renderSearchTags() {
+    const container = document.getElementById('searchTagsContainer');
+    const input = document.getElementById('searchTagsInput');
+    
+    // Clear all tags except input
+    const tags = container.querySelectorAll('.tag');
+    tags.forEach(tag => tag.remove());
+    
+    // Add tags before input
+    searchTags.forEach(tag => {
+        const tagEl = document.createElement('span');
+        tagEl.className = 'tag';
+        tagEl.innerHTML = `${tag} <span class="remove" onclick="removeSearchTag('${tag}')">×</span>`;
+        container.insertBefore(tagEl, input);
+    });
+}
+
+function focusSearchTagInput() {
+    document.getElementById('searchTagsInput').focus();
+}
+
+// Search Data
+async function searchData() {
+    const category = document.getElementById('searchCategory').value.trim();
+    const container = document.getElementById('dataListContainer');
+    const alertDiv = document.getElementById('queryAlert');
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    
+    if (searchTags.length > 0) {
+        searchTags.forEach(tag => params.append('tags', tag));
+    }
+    
+    if (category) {
+        params.append('category', category);
+    }
+    
+    const queryString = params.toString();
+    const url = queryString ? `/api/v1/data/search?${queryString}` : '/api/v1/data';
+    
+    container.innerHTML = '<div class="loading">Searching...</div>';
+    alertDiv.innerHTML = '';
+    
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            dataCache = await response.json();
+            renderDataList();
+            
+            // Show search summary
+            let summary = 'Showing ';
+            if (searchTags.length > 0 || category) {
+                summary += 'filtered results';
+                if (searchTags.length > 0) {
+                    summary += ` (tags: ${searchTags.join(', ')})`;
+                }
+                if (category) {
+                    summary += ` (category: ${category})`;
+                }
+            } else {
+                summary += 'all data';
+            }
+            summary += ` - ${dataCache.length} item${dataCache.length !== 1 ? 's' : ''} found`;
+            alertDiv.innerHTML = `<div class="alert">${summary}</div>`;
+            setTimeout(() => alertDiv.innerHTML = '', 5000);
+        } else if (response.status === 401) {
+            handleLogout();
+        } else {
+            container.innerHTML = '<div class="empty-state"><p>Search failed</p></div>';
+            alertDiv.innerHTML = '<div class="alert alert-error">❌ Failed to search data</div>';
+        }
+    } catch (error) {
+        container.innerHTML = '<div class="empty-state"><p>Connection error</p></div>';
+        alertDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${error.message}</div>`;
+    }
+}
+
+function clearSearchFilters() {
+    document.getElementById('searchCategory').value = '';
+    searchTags = [];
+    renderSearchTags();
+    document.getElementById('queryAlert').innerHTML = '';
 }
