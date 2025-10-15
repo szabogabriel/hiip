@@ -62,6 +62,29 @@ public class DataStorageService {
         }
     }
 
+    /**
+     * Search data by tags and/or category pattern with wildcards.
+     * Converts '*' wildcards to SQL '%' for LIKE queries.
+     * 
+     * @param tags the list of tags to search for (optional)
+     * @param categoryPattern the category pattern with wildcards (e.g., "work/*" or "*project*")
+     * @param owner the owner username
+     * @return list of data storage entries matching the criteria
+     */
+    public List<DataStorage> searchDataByPattern(List<String> tags, String categoryPattern, String owner) {
+        // Convert '*' to SQL '%' wildcard
+        String sqlPattern = categoryPattern.replace("*", "%");
+        
+        // Both tags and category pattern provided
+        if (tags != null && !tags.isEmpty()) {
+            return dataStorageRepository.findByTagsAndCategoryPathLikeAndOwnerAndHiddenFalse(tags, sqlPattern, owner);
+        }
+        // Only category pattern provided
+        else {
+            return dataStorageRepository.findByCategoryPathLikeAndOwnerAndHiddenFalse(sqlPattern, owner);
+        }
+    }
+
     public Optional<DataStorage> updateData(Long id, DataStorage updatedData, String owner) {
         Optional<DataStorage> existingData = dataStorageRepository.findById(id);
         if (existingData.isPresent() && existingData.get().getOwner().equals(owner) && !existingData.get().isHidden()) {

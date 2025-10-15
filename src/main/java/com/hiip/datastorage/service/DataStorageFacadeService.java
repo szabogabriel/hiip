@@ -109,30 +109,43 @@ public class DataStorageFacadeService {
     /**
      * Search data storage entries by tags and/or category.
      * Both parameters are optional.
+     * Category supports wildcard patterns using '*' (equivalent to SQL '%').
      * 
      * @param tags the list of tags to search for (optional)
-     * @param categoryPath the category path to filter by (optional)
+     * @param categoryPath the category path to filter by (optional, supports wildcards like "work/*" or "*project*")
      * @param owner the owner username
      * @return list of data storage responses matching the criteria
      */
     public List<DataStorageResponse> searchData(List<String> tags, String categoryPath, String owner) {
         logger.debug("Searching data with tags: {} and category: {} for owner: {}", tags, categoryPath, owner);
         
-        // Resolve category if provided
-        Category category = null;
-        if (categoryPath != null && !categoryPath.trim().isEmpty()) {
-            // Try to find existing category, don't create new one for search
-            category = categoryService.findByPath(categoryPath);
-            if (category == null) {
-                logger.debug("Category not found: {}, returning empty results", categoryPath);
-                return List.of(); // Category doesn't exist, no results
-            }
-        }
+        // Check if category pattern contains wildcards
+        boolean hasWildcard = categoryPath != null && categoryPath.contains("*");
         
-        return dataStorageService.searchData(tags, category, owner)
-                .stream()
-                .map(DataStorageResponse::new)
-                .collect(Collectors.toList());
+        if (hasWildcard) {
+            // Use pattern matching search for wildcards
+            logger.debug("Wildcard pattern detected in category: {}", categoryPath);
+            return dataStorageService.searchDataByPattern(tags, categoryPath, owner)
+                    .stream()
+                    .map(DataStorageResponse::new)
+                    .collect(Collectors.toList());
+        } else {
+            // Resolve category if provided (exact match)
+            Category category = null;
+            if (categoryPath != null && !categoryPath.trim().isEmpty()) {
+                // Try to find existing category, don't create new one for search
+                category = categoryService.findByPath(categoryPath);
+                if (category == null) {
+                    logger.debug("Category not found: {}, returning empty results", categoryPath);
+                    return List.of(); // Category doesn't exist, no results
+                }
+            }
+            
+            return dataStorageService.searchData(tags, category, owner)
+                    .stream()
+                    .map(DataStorageResponse::new)
+                    .collect(Collectors.toList());
+        }
     }
 
     /**

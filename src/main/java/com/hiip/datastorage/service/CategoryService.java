@@ -82,7 +82,7 @@ public class CategoryService {
         }
 
         // Check if category already exists
-        Optional<Category> existingCategory = categoryRepository.findByPath(normalizedPath);
+        Optional<Category> existingCategory = categoryRepository.findByPathLike(normalizedPath);
         if (existingCategory.isPresent()) {
             return existingCategory.get();
         }
@@ -104,7 +104,7 @@ public class CategoryService {
             currentPath.append(segment.trim());
 
             String pathSoFar = currentPath.toString();
-            Optional<Category> categoryAtThisLevel = categoryRepository.findByPath(pathSoFar);
+            Optional<Category> categoryAtThisLevel = categoryRepository.findByPathLike(pathSoFar);
 
             if (categoryAtThisLevel.isPresent()) {
                 parent = categoryAtThisLevel.get();
@@ -140,7 +140,7 @@ public class CategoryService {
      */
     public Optional<Category> getCategoryByPath(String path) {
         String normalizedPath = normalizePath(path);
-        return categoryRepository.findByPath(normalizedPath);
+        return categoryRepository.findByPathLike(normalizedPath);
     }
 
     /**
@@ -188,6 +188,9 @@ public class CategoryService {
         
         // Replace multiple slashes with single slash
         normalized = normalized.replaceAll("/+", "/");
+
+        // Replace '*' with '%' for wildcard support
+        normalized = normalized.replace('*', '%');
         
         // Trim each segment
         String[] segments = normalized.split("/");

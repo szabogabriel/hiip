@@ -25,4 +25,17 @@ public interface DataStorageRepository extends JpaRepository<DataStorage, Long> 
         @Param("tags") List<String> tags, 
         @Param("category") Category category, 
         @Param("owner") String owner);
+    
+    // Search by category path pattern (with wildcards)
+    @Query("SELECT d FROM DataStorage d WHERE d.category.path LIKE :pathPattern AND d.owner = :owner AND d.hidden = false")
+    List<DataStorage> findByCategoryPathLikeAndOwnerAndHiddenFalse(
+        @Param("pathPattern") String pathPattern, 
+        @Param("owner") String owner);
+    
+    // Search by tags and category path pattern (with wildcards)
+    @Query("SELECT DISTINCT d FROM DataStorage d JOIN d.tags t WHERE t IN :tags AND d.category.path LIKE :pathPattern AND d.owner = :owner AND d.hidden = false")
+    List<DataStorage> findByTagsAndCategoryPathLikeAndOwnerAndHiddenFalse(
+        @Param("tags") List<String> tags,
+        @Param("pathPattern") String pathPattern, 
+        @Param("owner") String owner);
 }

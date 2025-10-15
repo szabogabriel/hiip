@@ -12,9 +12,15 @@ import java.util.Optional;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     
     /**
-     * Find a category by its complete path
+     * Find a category by its exact path
      */
     Optional<Category> findByPath(String path);
+    
+    /**
+     * Find a category by its path using LIKE (for wildcard searches)
+     */
+    @Query("SELECT c FROM Category c WHERE c.path LIKE :path")
+    Optional<Category> findByPathLike(String path);
     
     /**
      * Find all root categories (categories without a parent)

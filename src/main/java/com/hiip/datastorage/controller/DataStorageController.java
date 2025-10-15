@@ -92,7 +92,9 @@ public class DataStorageController {
     @GetMapping("/search")
     @Operation(
         summary = "Search data by tags and/or category",
-        description = "Search data storage entries by tags and/or category. Both parameters are optional."
+        description = "Search data storage entries by tags and/or category. Both parameters are optional. " +
+                     "Category supports wildcard patterns using '*' (equivalent to SQL '%'). " +
+                     "Examples: 'work/*' matches 'work/projects', 'work/notes'; '*project*' matches any path containing 'project'."
     )
     @ApiResponse(responseCode = "200", description = "Search results retrieved successfully")
     public ResponseEntity<List<DataStorageResponse>> searchData(
