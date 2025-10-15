@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Recommended for production
+  postgres:
+    image: postgres:16-alpine
+    container_name: hiip-postgres
+    environment:
+      POSTGRES_DB: hiipdb
+      POSTGRES_USER: hiip_user
+      POSTGRES_PASSWORD: hiip_pass
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hiip_user -d hiipdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hiip-network
+
+  # MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: hiip-mysql
+    environment:
+      MYSQL_DATABASE: hiipdb
+      MYSQL_USER: hiip_user
+      MYSQL_PASSWORD: hiip_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hiip-network
+
+  # MariaDB (MySQL alternative)
+  mariadb:
+    image: mariadb:11
+    container_name: hiip-mariadb
+    environment:
+      MARIADB_DATABASE: hiipdb
+      MARIADB_USER: hiip_user
+      MARIADB_PASSWORD: hiip_pass
+      MARIADB_ROOT_PASSWORD: root_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hiip-network
+
+  # SQL Server
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: hiip-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "HiipPass123!"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P HiipPass123! -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hiip-network
+
+  # Oracle XE (Free edition)
+  # Uncomment if needed - requires significant resources
+  # oracle:
+  #   image: gvenzl/oracle-xe:21-slim
+  #   container_name: hiip-oracle
+  #   environment:
+  #     ORACLE_PASSWORD: HiipPass123
+  #     APP_USER: hiip_user
+  #     APP_USER_PASSWORD: hiip_pass
+  #   ports:
+  #     - "1521:1521"
+  #   volumes:
+  #     - oracle_data:/opt/oracle/oradata
+  #   networks:
+  #     - hiip-network
+
+  # pgAdmin - PostgreSQL Management Tool
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: hiip-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@hiip.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - hiip-network
+
+  # phpMyAdmin - MySQL/MariaDB Management Tool
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: hiip-phpmyadmin
+    environment:
+      PMA_HOSTS: mysql,mariadb
+      PMA_PORTS: 3306,3306
+      PMA_USER: root
+      PMA_PASSWORD: root_pass
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+      - mariadb
+    networks:
+      - hiip-network
+
+volumes:
+  postgres_data:
+    driver: local
+  mysql_data:
+    driver: local
+  mariadb_data:
+    driver: local
+  sqlserver_data:
+    driver: local
+  # oracle_data:
+  #   driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  hiip-network:
+    driver: bridge
