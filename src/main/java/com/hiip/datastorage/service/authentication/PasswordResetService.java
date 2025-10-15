@@ -1,4 +1,4 @@
-package com.hiip.datastorage.service;
+package com.hiip.datastorage.service.authentication;
 
 import com.hiip.datastorage.entity.PasswordResetToken;
 import com.hiip.datastorage.entity.User;

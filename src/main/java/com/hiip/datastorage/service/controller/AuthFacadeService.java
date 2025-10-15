@@ -1,4 +1,4 @@
-package com.hiip.datastorage.service;
+package com.hiip.datastorage.service.controller;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,6 +15,11 @@ import com.hiip.datastorage.dto.JwtResponse;
 import com.hiip.datastorage.dto.UserRequest;
 import com.hiip.datastorage.entity.User;
 import com.hiip.datastorage.security.JwtUtil;
+import com.hiip.datastorage.service.EmailService;
+import com.hiip.datastorage.service.authentication.AccountLockoutService;
+import com.hiip.datastorage.service.authentication.CustomUserDetailsService;
+import com.hiip.datastorage.service.authentication.PasswordResetService;
+import com.hiip.datastorage.service.authentication.UserService;
 
 /**
  * Facade service for authentication operations.

@@ -16,7 +16,7 @@ import com.hiip.datastorage.dto.LoginRequest;
 import com.hiip.datastorage.dto.PasswordResetConfirmRequest;
 import com.hiip.datastorage.dto.PasswordResetRequest;
 import com.hiip.datastorage.dto.RefreshTokenRequest;
-import com.hiip.datastorage.service.AuthFacadeService;
+import com.hiip.datastorage.service.controller.AuthFacadeService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

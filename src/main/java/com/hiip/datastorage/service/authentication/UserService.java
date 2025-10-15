@@ -1,4 +1,4 @@
-package com.hiip.datastorage.service;
+package com.hiip.datastorage.service.authentication;
 
 import com.hiip.datastorage.dto.UserRequest;
 import com.hiip.datastorage.dto.UserResponse;

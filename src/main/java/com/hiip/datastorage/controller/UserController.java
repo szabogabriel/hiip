@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hiip.datastorage.dto.UserRequest;
 import com.hiip.datastorage.dto.UserResponse;
-import com.hiip.datastorage.service.UserFacadeService;
+import com.hiip.datastorage.service.controller.UserFacadeService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

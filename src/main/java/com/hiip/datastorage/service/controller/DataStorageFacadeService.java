@@ -1,4 +1,4 @@
-package com.hiip.datastorage.service;
+package com.hiip.datastorage.service.controller;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +13,8 @@ import com.hiip.datastorage.dto.DataStorageRequest;
 import com.hiip.datastorage.dto.DataStorageResponse;
 import com.hiip.datastorage.entity.Category;
 import com.hiip.datastorage.entity.DataStorage;
+import com.hiip.datastorage.service.CategoryService;
+import com.hiip.datastorage.service.DataStorageService;
 
 /**
  * Facade service for data storage operations.

@@ -2,7 +2,8 @@ package com.hiip.datastorage.config;
 
 import com.hiip.datastorage.security.JwtAuthenticationEntryPoint;
 import com.hiip.datastorage.security.JwtAuthenticationFilter;
-import com.hiip.datastorage.service.CustomUserDetailsService;
+import com.hiip.datastorage.service.authentication.CustomUserDetailsService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

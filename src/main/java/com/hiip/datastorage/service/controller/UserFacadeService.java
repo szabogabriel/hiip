@@ -1,4 +1,4 @@
-package com.hiip.datastorage.service;
+package com.hiip.datastorage.service.controller;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import com.hiip.datastorage.dto.UserRequest;
 import com.hiip.datastorage.dto.UserResponse;
+import com.hiip.datastorage.service.authentication.UserService;
 
 /**
  * Facade service for user management operations.

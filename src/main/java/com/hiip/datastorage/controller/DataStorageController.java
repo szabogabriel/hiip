@@ -2,7 +2,7 @@ package com.hiip.datastorage.controller;
 
 import com.hiip.datastorage.dto.DataStorageRequest;
 import com.hiip.datastorage.dto.DataStorageResponse;
-import com.hiip.datastorage.service.DataStorageFacadeService;
+import com.hiip.datastorage.service.controller.DataStorageFacadeService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,6 +1,5 @@
 package com.hiip.datastorage.security;
 
-import com.hiip.datastorage.service.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +11,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.hiip.datastorage.service.authentication.CustomUserDetailsService;
 
 import java.io.IOException;
 
