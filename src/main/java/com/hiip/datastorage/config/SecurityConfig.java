@@ -2,6 +2,7 @@ package com.hiip.datastorage.config;
 
 import com.hiip.datastorage.security.JwtAuthenticationEntryPoint;
 import com.hiip.datastorage.security.JwtAuthenticationFilter;
+import com.hiip.datastorage.security.UserRole;
 import com.hiip.datastorage.service.authentication.CustomUserDetailsService;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,8 +49,8 @@ public class SecurityConfig {
                 .requestMatchers(new AntPathRequestMatcher("/swagger-ui/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/v3/api-docs/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/swagger-ui.html")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/v1/users/**")).hasRole(UserRole.ADMIN.getRoleName())
                 .requestMatchers(new AntPathRequestMatcher("/api/v1/data/**")).authenticated()
-                .requestMatchers(new AntPathRequestMatcher("/api/v1/users/**")).authenticated()
                 .anyRequest().permitAll()
             )
             .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
