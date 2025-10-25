@@ -1,5 +1,6 @@
 package com.hiip.datastorage.controller;
 
+import com.hiip.datastorage.dto.CategoryRequest;
 import com.hiip.datastorage.dto.CategoryResponse;
 import com.hiip.datastorage.dto.CategoryShareRequest;
 import com.hiip.datastorage.dto.CategoryShareResponse;
@@ -49,6 +50,38 @@ public class CategoryController {
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping
+    @Operation(
+        summary = "Create a new category",
+        description = "Create a new category explicitly. The path can be provided or will be auto-generated from the name and parent."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Category created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or category already exists"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<?> createCategory(
+            @RequestBody CategoryRequest request,
+            Authentication authentication) {
+        
+        try {
+            String currentUser = authentication.getName();
+            
+            Category category = categoryService.createCategory(
+                request.getName(),
+                request.getPath(),
+                request.getParentId(),
+                currentUser,
+                request.isGlobal()
+            );
+            
+            CategoryResponse response = convertToResponse(category);
+            return ResponseEntity.status(201).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping("/roots")

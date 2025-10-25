@@ -289,4 +289,58 @@ public class CategoryService {
         Optional<Category> category = categoryRepository.findById(categoryId);
         return category.map(c -> c.hasWritePermission(username)).orElse(false);
     }
+
+    /**
+     * Create a new category explicitly with the given parameters.
+     * Unlike getOrCreateCategory which creates the full path hierarchy,
+     * this method creates only the specified category.
+     * 
+     * @param name The category name
+     * @param path The complete category path (if null, will be generated from name and parent)
+     * @param parentId The ID of the parent category (null for root categories)
+     * @param createdBy The username of the user creating the category
+     * @param isGlobal Whether this should be a global category
+     * @return The created category entity
+     */
+    @Transactional
+    public Category createCategory(String name, String path, Long parentId, String createdBy, boolean isGlobal) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Category name cannot be empty");
+        }
+
+        Category parent = null;
+        String finalPath;
+
+        // If parent ID is provided, fetch the parent
+        if (parentId != null) {
+            parent = categoryRepository.findById(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
+        }
+
+        // Determine the path
+        if (path != null && !path.trim().isEmpty()) {
+            finalPath = normalizePath(path);
+        } else {
+            // Generate path from name and parent
+            if (parent != null) {
+                finalPath = parent.getPath() + "/" + name.trim();
+            } else {
+                finalPath = name.trim();
+            }
+        }
+
+        // Check if category with this path already exists
+        Optional<Category> existing = categoryRepository.findByPathLike(finalPath);
+        if (existing.isPresent()) {
+            throw new IllegalArgumentException("Category with path '" + finalPath + "' already exists");
+        }
+
+        // Create and save the new category
+        Category newCategory = new Category(name.trim(), finalPath, parent, createdBy, isGlobal);
+        newCategory = categoryRepository.save(newCategory);
+        logger.info("Created new category: {} with path: {} for user: {} (global: {})", 
+                   name, finalPath, createdBy, isGlobal);
+
+        return newCategory;
+    }
 }
