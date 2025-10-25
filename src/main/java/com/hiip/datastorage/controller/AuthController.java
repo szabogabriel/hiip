@@ -2,6 +2,8 @@ package com.hiip.datastorage.controller;
 
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -92,11 +94,11 @@ public class AuthController {
     @PostMapping("/logout")
     @Operation(
         summary = "Logout user",
-        description = "Logout the current user (client-side token removal)"
+        description = "Logout the current user and revoke the JWT token"
     )
     @ApiResponse(responseCode = "200", description = "Logout successful")
-    public ResponseEntity<?> logoutUser() {
-        Map<String, Object> result = authFacadeService.logoutUser();
+    public ResponseEntity<?> logoutUser(HttpServletRequest request) {
+        Map<String, Object> result = authFacadeService.logoutUser(request);
         return ResponseEntity.ok(result.get("message"));
     }
 

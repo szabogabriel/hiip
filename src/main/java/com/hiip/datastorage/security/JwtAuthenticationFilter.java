@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.hiip.datastorage.service.authentication.CustomUserDetailsService;
+import com.hiip.datastorage.service.authentication.TokenRevocationService;
 
 import java.io.IOException;
 
@@ -24,6 +25,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
+
+    @Autowired
+    private TokenRevocationService tokenRevocationService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
@@ -51,10 +55,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Once we get the token validate it.
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
+            // Check if token is revoked
+            if (tokenRevocationService.isTokenRevoked(jwtToken)) {
+                logger.warn("JWT Token has been revoked for user: " + username + ". Request will be rejected.");
+                // Don't set authentication - Spring Security will reject the request
+                chain.doFilter(request, response);
+                return;
+            }
+
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
             // if token is valid configure Spring Security to manually set authentication
             if (jwtUtil.validateToken(jwtToken, userDetails)) {
+
+                logger.debug("JWT Token validated successfully for user: " + username);
 
                 UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = 
                         new UsernamePasswordAuthenticationToken(

@@ -1,8 +1,13 @@
 package com.hiip.datastorage.service.controller;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +24,7 @@ import com.hiip.datastorage.service.EmailService;
 import com.hiip.datastorage.service.authentication.AccountLockoutService;
 import com.hiip.datastorage.service.authentication.CustomUserDetailsService;
 import com.hiip.datastorage.service.authentication.PasswordResetService;
+import com.hiip.datastorage.service.authentication.TokenRevocationService;
 import com.hiip.datastorage.service.authentication.UserService;
 
 /**
@@ -28,6 +34,8 @@ import com.hiip.datastorage.service.authentication.UserService;
  */
 @Service
 public class AuthFacadeService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthFacadeService.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -49,6 +57,9 @@ public class AuthFacadeService {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private TokenRevocationService tokenRevocationService;
 
     @Value("${hiip.jwt.expiration}")
     private Long jwtExpiration;
@@ -275,15 +286,49 @@ public class AuthFacadeService {
 
     /**
      * Logout user.
-     * In a stateless JWT system, this is handled client-side by removing the token.
+     * Revokes the JWT token by adding it to the blacklist.
      * 
+     * @param request the HTTP request containing the JWT token in the Authorization header
      * @return map containing the result of the operation
      */
-    public Map<String, Object> logoutUser() {
+    public Map<String, Object> logoutUser(HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
-        result.put("status", "SUCCESS");
-        result.put("message", "User logged out successfully");
-        result.put("httpStatus", 200);
+        
+        try {
+            // Extract token from Authorization header
+            String requestTokenHeader = request.getHeader("Authorization");
+            logger.info("Logout attempt - Authorization header present: {}", requestTokenHeader != null);
+            
+            if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
+                String jwtToken = requestTokenHeader.substring(7);
+                String username = jwtUtil.extractUsername(jwtToken);
+                
+                logger.info("Logout - Extracted username: {}", username);
+                
+                // Calculate token expiration time
+                LocalDateTime expirationDate = LocalDateTime.now().plusSeconds(jwtExpiration / 1000);
+                
+                // Add token to blacklist
+                tokenRevocationService.revokeToken(jwtToken, username, expirationDate);
+                
+                logger.info("Token revoked successfully for user: {}", username);
+                
+                result.put("status", "SUCCESS");
+                result.put("message", "User logged out successfully. Token has been revoked.");
+                result.put("httpStatus", 200);
+            } else {
+                logger.warn("Logout failed - No valid Authorization header");
+                result.put("status", "ERROR");
+                result.put("message", "No valid token found in request");
+                result.put("httpStatus", 400);
+            }
+        } catch (Exception e) {
+            logger.error("Error during logout", e);
+            result.put("status", "ERROR");
+            result.put("message", "Error during logout: " + e.getMessage());
+            result.put("httpStatus", 500);
+        }
+        
         return result;
     }
 }
