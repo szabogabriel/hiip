@@ -54,6 +54,14 @@ public class DataStorageFacadeService {
             logger.info("Category resolved: {}", category != null ? category.getPath() : "null");
         }
         
+        // Check if content is null, empty, or just an empty JSON object
+        if (request.getContent() == null || 
+            request.getContent().isNull() || 
+            request.getContent().isEmpty()) {
+            logger.warn("Content is empty, cannot create data");
+            throw new IllegalArgumentException("Content cannot be empty");
+        }
+
         DataStorage dataStorage = new DataStorage(request.getContent(), request.getTags(), owner, category);
         DataStorage saved = dataStorageService.createData(dataStorage);
         
