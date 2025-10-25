@@ -55,12 +55,13 @@ public class CategoryController {
     @PostMapping
     @Operation(
         summary = "Create a new category",
-        description = "Create a new category explicitly. The path can be provided or will be auto-generated from the name and parent."
+        description = "Create a new category explicitly. The path can be provided or will be auto-generated from the name and parent. To create a child category, you must own or have write access to the parent category."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Category created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid request or category already exists"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized")
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions on parent category")
     })
     public ResponseEntity<?> createCategory(
             @RequestBody CategoryRequest request,
@@ -80,6 +81,10 @@ public class CategoryController {
             CategoryResponse response = convertToResponse(category);
             return ResponseEntity.status(201).body(response);
         } catch (IllegalArgumentException e) {
+            // Check if it's a permission error
+            if (e.getMessage().contains("don't have permission")) {
+                return ResponseEntity.status(403).body(e.getMessage());
+            }
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

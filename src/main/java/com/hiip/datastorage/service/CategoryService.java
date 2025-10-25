@@ -301,6 +301,7 @@ public class CategoryService {
      * @param createdBy The username of the user creating the category
      * @param isGlobal Whether this should be a global category
      * @return The created category entity
+     * @throws IllegalArgumentException if validation fails or user lacks permission
      */
     @Transactional
     public Category createCategory(String name, String path, Long parentId, String createdBy, boolean isGlobal) {
@@ -311,10 +312,18 @@ public class CategoryService {
         Category parent = null;
         String finalPath;
 
-        // If parent ID is provided, fetch the parent
+        // If parent ID is provided, fetch the parent and check permissions
         if (parentId != null) {
             parent = categoryRepository.findById(parentId)
                     .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
+            
+            // Check if user has write permission on the parent category
+            if (!parent.hasWritePermission(createdBy)) {
+                throw new IllegalArgumentException(
+                    "You don't have permission to create a child category under '" + parent.getPath() + "'. " +
+                    "You must be the owner or have write access to the parent category."
+                );
+            }
         }
 
         // Determine the path
