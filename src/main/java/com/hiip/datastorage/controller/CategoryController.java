@@ -202,10 +202,11 @@ public class CategoryController {
     @PostMapping("/{id}/share")
     @Operation(
         summary = "Share category with a user",
-        description = "Share a category with another user with read/write permissions. Only the category owner can share."
+        description = "Share a category with another user (by username or email) with read/write permissions. Only the category owner can share. The 'username' field accepts either username or email."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Category shared successfully"),
+        @ApiResponse(responseCode = "400", description = "User not found or invalid request"),
         @ApiResponse(responseCode = "403", description = "User doesn't own this category"),
         @ApiResponse(responseCode = "404", description = "Category not found"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
@@ -222,23 +223,28 @@ public class CategoryController {
             return ResponseEntity.status(403).body("You don't have permission to share this category");
         }
         
-        CategoryShare share = categoryService.shareCategory(
-            id, 
-            request.getUsername(), 
-            request.isCanRead(), 
-            request.isCanWrite()
-        );
-        
-        return ResponseEntity.ok(new CategoryShareResponse(share));
+        try {
+            CategoryShare share = categoryService.shareCategory(
+                id, 
+                request.getUsername(), 
+                request.isCanRead(), 
+                request.isCanWrite()
+            );
+            
+            return ResponseEntity.ok(new CategoryShareResponse(share));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}/share/{username}")
     @Operation(
         summary = "Unshare category with a user",
-        description = "Remove sharing for a specific user. Only the category owner can unshare."
+        description = "Remove sharing for a specific user (by username or email). Only the category owner can unshare. The 'username' parameter accepts either username or email."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Category unshared successfully"),
+        @ApiResponse(responseCode = "400", description = "User not found"),
         @ApiResponse(responseCode = "403", description = "User doesn't own this category"),
         @ApiResponse(responseCode = "404", description = "Category not found"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
@@ -255,8 +261,12 @@ public class CategoryController {
             return ResponseEntity.status(403).body("You don't have permission to modify sharing for this category");
         }
         
-        categoryService.unshareCategory(id, username);
-        return ResponseEntity.ok().build();
+        try {
+            categoryService.unshareCategory(id, username);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping("/{id}/shares")

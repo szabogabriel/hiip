@@ -2,8 +2,10 @@ package com.hiip.datastorage.service;
 
 import com.hiip.datastorage.entity.Category;
 import com.hiip.datastorage.entity.CategoryShare;
+import com.hiip.datastorage.entity.User;
 import com.hiip.datastorage.repository.CategoryRepository;
 import com.hiip.datastorage.repository.CategoryShareRepository;
+import com.hiip.datastorage.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,9 @@ public class CategoryService {
 
     @Autowired
     private CategoryShareRepository categoryShareRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * Get or create a category by its path.
@@ -229,40 +234,95 @@ public class CategoryService {
     }
 
     /**
-     * Share a category with a user
+     * Share a category with a user (by username or email)
+     * This method accepts either a username or email and resolves it to the username for storage.
+     * 
+     * @param categoryId The ID of the category to share
+     * @param usernameOrEmail The username or email of the user to share with
+     * @param canRead Whether the user can read the category
+     * @param canWrite Whether the user can write to the category
+     * @return The created or updated CategoryShare
+     * @throws IllegalArgumentException if category or user not found
      */
     @Transactional
-    public CategoryShare shareCategory(Long categoryId, String sharedWithUsername, boolean canRead, boolean canWrite) {
+    public CategoryShare shareCategory(Long categoryId, String usernameOrEmail, boolean canRead, boolean canWrite) {
         Optional<Category> category = categoryRepository.findById(categoryId);
         if (!category.isPresent()) {
             throw new IllegalArgumentException("Category not found");
         }
 
+        // Resolve username from either username or email
+        String username = resolveUsername(usernameOrEmail);
+
         // Check if already shared
         Optional<CategoryShare> existing = categoryShareRepository
-                .findByCategoryAndSharedWithUsername(category.get(), sharedWithUsername);
+                .findByCategoryAndSharedWithUsername(category.get(), username);
         
         if (existing.isPresent()) {
             // Update existing share
             CategoryShare share = existing.get();
             share.setCanRead(canRead);
             share.setCanWrite(canWrite);
+            logger.info("Updated category share: category {} shared with user {} (input: {})", 
+                       categoryId, username, usernameOrEmail);
             return categoryShareRepository.save(share);
         } else {
             // Create new share
-            CategoryShare share = new CategoryShare(category.get(), sharedWithUsername, canRead, canWrite);
+            CategoryShare share = new CategoryShare(category.get(), username, canRead, canWrite);
+            logger.info("Created category share: category {} shared with user {} (input: {})", 
+                       categoryId, username, usernameOrEmail);
             return categoryShareRepository.save(share);
         }
     }
 
     /**
-     * Remove sharing for a user
+     * Resolve a username from either a username or email address.
+     * First tries to find by username, then by email.
+     * 
+     * @param usernameOrEmail The username or email to resolve
+     * @return The username
+     * @throws IllegalArgumentException if user not found
+     */
+    private String resolveUsername(String usernameOrEmail) {
+        if (usernameOrEmail == null || usernameOrEmail.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username or email cannot be empty");
+        }
+
+        String identifier = usernameOrEmail.trim();
+
+        // First, try to find by username
+        Optional<User> userByUsername = userRepository.findByUsername(identifier);
+        if (userByUsername.isPresent()) {
+            return userByUsername.get().getUsername();
+        }
+
+        // If not found, try to find by email
+        Optional<User> userByEmail = userRepository.findByEmail(identifier);
+        if (userByEmail.isPresent()) {
+            return userByEmail.get().getUsername();
+        }
+
+        // User not found
+        throw new IllegalArgumentException("User with username or email '" + identifier + "' not found");
+    }
+
+    /**
+     * Remove sharing for a user (by username or email)
+     * This method accepts either a username or email and resolves it to the username.
+     * 
+     * @param categoryId The ID of the category to unshare
+     * @param usernameOrEmail The username or email of the user to remove sharing from
+     * @throws IllegalArgumentException if user not found
      */
     @Transactional
-    public void unshareCategory(Long categoryId, String username) {
+    public void unshareCategory(Long categoryId, String usernameOrEmail) {
         Optional<Category> category = categoryRepository.findById(categoryId);
         if (category.isPresent()) {
+            // Resolve username from either username or email
+            String username = resolveUsername(usernameOrEmail);
             categoryShareRepository.deleteByCategoryAndSharedWithUsername(category.get(), username);
+            logger.info("Removed category share: category {} unshared from user {} (input: {})", 
+                       categoryId, username, usernameOrEmail);
         }
     }
 
