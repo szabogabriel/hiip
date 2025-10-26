@@ -208,4 +208,61 @@ public class DataStorageFacadeService {
         
         return deleted;
     }
+
+    /**
+     * Get all data storage entries accessible by the user (owned + shared via categories + global).
+     * 
+     * @param username the username
+     * @return list of accessible data storage responses
+     */
+    public List<DataStorageResponse> getAllAccessibleData(String username) {
+        logger.debug("Retrieving all accessible data for user: {}", username);
+        
+        return dataStorageService.getAllAccessibleData(username)
+                .stream()
+                .map(DataStorageResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Search data storage entries accessible by user (owned + shared) by tags and/or category.
+     * Both parameters are optional.
+     * Category supports wildcard patterns using '*' (equivalent to SQL '%').
+     * 
+     * @param tags the list of tags to search for (optional)
+     * @param categoryPath the category path to filter by (optional, supports wildcards like "work/*" or "*project*")
+     * @param username the username
+     * @return list of data storage responses matching the criteria
+     */
+    public List<DataStorageResponse> searchAccessibleData(List<String> tags, String categoryPath, String username) {
+        logger.debug("Searching accessible data with tags: {} and category: {} for user: {}", tags, categoryPath, username);
+        
+        // Check if category pattern contains wildcards
+        boolean hasWildcard = categoryPath != null && categoryPath.contains("*");
+        
+        if (hasWildcard) {
+            // Use pattern matching search for wildcards
+            logger.debug("Wildcard pattern detected in category: {}", categoryPath);
+            return dataStorageService.searchAccessibleDataByPattern(tags, categoryPath, username)
+                    .stream()
+                    .map(DataStorageResponse::new)
+                    .collect(Collectors.toList());
+        } else {
+            // Resolve category if provided (exact match)
+            Category category = null;
+            if (categoryPath != null && !categoryPath.trim().isEmpty()) {
+                // Try to find existing category, don't create new one for search
+                category = categoryService.findByPath(categoryPath);
+                if (category == null) {
+                    logger.debug("Category not found: {}, returning empty results", categoryPath);
+                    return List.of(); // Category doesn't exist, no results
+                }
+            }
+            
+            return dataStorageService.searchAccessibleData(tags, category, username)
+                    .stream()
+                    .map(DataStorageResponse::new)
+                    .collect(Collectors.toList());
+        }
+    }
 }

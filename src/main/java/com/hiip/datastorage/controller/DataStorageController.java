@@ -150,4 +150,37 @@ public class DataStorageController {
         
         return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
+
+    @GetMapping("/accessible")
+    @Operation(
+        summary = "Get all accessible data",
+        description = "Retrieve all data storage entries accessible by the user (owned + shared via categories + global categories)"
+    )
+    @ApiResponse(responseCode = "200", description = "Accessible data list retrieved successfully")
+    public ResponseEntity<List<DataStorageResponse>> getAllAccessibleData(Authentication authentication) {
+        String username = authentication.getName();
+        List<DataStorageResponse> data = dataStorageFacadeService.getAllAccessibleData(username);
+        
+        return ResponseEntity.ok(data);
+    }
+
+    @GetMapping("/accessible/search")
+    @Operation(
+        summary = "Search accessible data by tags and/or category",
+        description = "Search data storage entries accessible by the user (owned + shared) by tags and/or category. " +
+                     "Both parameters are optional. Category supports wildcard patterns using '*' (equivalent to SQL '%'). " +
+                     "Examples: 'work/*' matches 'work/projects', 'work/notes'; '*project*' matches any path containing 'project'. " +
+                     "This search includes data from categories shared with you."
+    )
+    @ApiResponse(responseCode = "200", description = "Search results retrieved successfully")
+    public ResponseEntity<List<DataStorageResponse>> searchAccessibleData(
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) String category,
+            Authentication authentication) {
+        
+        String username = authentication.getName();
+        List<DataStorageResponse> data = dataStorageFacadeService.searchAccessibleData(tags, category, username);
+        
+        return ResponseEntity.ok(data);
+    }
 }

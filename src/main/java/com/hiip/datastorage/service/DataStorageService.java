@@ -107,4 +107,65 @@ public class DataStorageService {
         }
         return false;
     }
+
+    /**
+     * Get all data accessible by the user (owned + shared via categories + global categories).
+     * 
+     * @param username the username
+     * @return list of all accessible data storage entries
+     */
+    public List<DataStorage> getAllAccessibleData(String username) {
+        return dataStorageRepository.findAccessibleByUser(username);
+    }
+
+    /**
+     * Search data accessible by user (owned + shared) by tags and/or category.
+     * Both parameters are optional.
+     * 
+     * @param tags the list of tags to search for (optional)
+     * @param category the category to filter by (optional)
+     * @param username the username
+     * @return list of data storage entries matching the criteria
+     */
+    public List<DataStorage> searchAccessibleData(List<String> tags, Category category, String username) {
+        // Both tags and category provided
+        if (tags != null && !tags.isEmpty() && category != null) {
+            return dataStorageRepository.findByTagsAndCategoryAccessibleByUser(tags, category, username);
+        }
+        // Only tags provided
+        else if (tags != null && !tags.isEmpty()) {
+            return dataStorageRepository.findByTagsAccessibleByUser(tags, username);
+        }
+        // Only category provided
+        else if (category != null) {
+            return dataStorageRepository.findByCategoryAccessibleByUser(category, username);
+        }
+        // Neither provided - return all accessible data
+        else {
+            return dataStorageRepository.findAccessibleByUser(username);
+        }
+    }
+
+    /**
+     * Search data accessible by user (owned + shared) by tags and/or category pattern with wildcards.
+     * Converts '*' wildcards to SQL '%' for LIKE queries.
+     * 
+     * @param tags the list of tags to search for (optional)
+     * @param categoryPattern the category pattern with wildcards (e.g., "work/*" or "*project*")
+     * @param username the username
+     * @return list of data storage entries matching the criteria
+     */
+    public List<DataStorage> searchAccessibleDataByPattern(List<String> tags, String categoryPattern, String username) {
+        // Convert '*' to SQL '%' wildcard
+        String sqlPattern = categoryPattern.replace("*", "%");
+        
+        // Both tags and category pattern provided
+        if (tags != null && !tags.isEmpty()) {
+            return dataStorageRepository.findByTagsAndCategoryPathLikeAccessibleByUser(tags, sqlPattern, username);
+        }
+        // Only category pattern provided
+        else {
+            return dataStorageRepository.findByCategoryPathLikeAccessibleByUser(sqlPattern, username);
+        }
+    }
 }
