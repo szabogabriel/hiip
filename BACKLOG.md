@@ -1,4 +1,6 @@
-# HI## 📋 Recent Changes
+# HIIT
+
+## 📋 Recent Changes
 
 ### October 26, 2025 - Category Management & Sharing Enhancements ✅
 Completed category management features with hierarchical structure and sharing capabilities:
