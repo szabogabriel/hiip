@@ -1,333 +1,236 @@
-# HIIT
+# HIIP Application Backlog
 
-## 📋 Recent Changes
+## Current Product Direction
 
-### October 26, 2025 - Category Management & Sharing Enhancements ✅
-Completed category management features with hierarchical structure and sharing capabilities:
+This backlog contains current priorities and intended behavior. Items remain unchecked until their implementation and tests are present in the repository.
 
-**New Components:**
-- `Category` entity with hierarchical structure (parent/child relationships)
-- `CategoryShare` entity for sharing categories with users
-- `CategoryService` - Complete category management with CRUD operations
-- `CategoryController` - REST endpoints for category operations
-- Category sharing with flexible user identification (username or email)
+Current priority order:
 
-**Features Implemented:**
-- Hierarchical category structure with unlimited nesting
-- Category creation with explicit endpoint and permission checks
-- Category sharing with read/write permissions
-- User-based category ownership and access control
-- Global categories accessible by all users
-- Category search with path prefix and wildcards
-- Category tree retrieval with full hierarchy
-- Share/unshare categories by username or email
+1. A useful web UI for the primary data workflow
+2. Reliable persistent storage
+3. Security hardening
+4. Collaboration and sharing refinements
 
-**API Endpoints:**
-- `POST /api/v1/categories` - Create new category
-- `GET /api/v1/categories` - List all categories
-- `GET /api/v1/categories/tree` - Get category tree
-- `GET /api/v1/categories/search` - Search categories
-- `POST /api/v1/categories/{id}/share` - Share category with user
-- `DELETE /api/v1/categories/{id}/share/{username}` - Unshare category
-- `GET /api/v1/categories/my-categories` - Get accessible categories
+The REST API remains the backend boundary for web, mobile, and third-party clients. Users should not need to call the API directly when using the web UI.
 
-### October 10, 2025 - Password Security Implementation ✅Application Development Backlog
+### Product Decisions
 
-This document outlines the roadmap for developing HIIP into a complete, production-ready application. Items are organized by priority and functional area.
+- Users are created by administrators only. Public registration is out of scope.
+- The web UI is the primary user-facing surface. The API remains important for integrations.
+- Soft deletion is intentional and remains the normal delete behavior for now.
+- Sharing a category works like sharing a folder: access is inherited by all descendants.
+- Read access never grants permission to create or modify data.
+- Global-category creation is configurable and defaults to admin-only.
+- Data ownership remains with the creator even when its category is shared.
 
-## � Recent Changes
+## Priority 1: Primary UI Workflow
 
-### October 10, 2025 - Password Security Implementation ✅
-Completed comprehensive password security enhancements:
+### [ ] 1.1 Complete the data workspace
 
-**New Components:**
-- `PasswordValidator` - Comprehensive password strength validation
-- `PasswordHistory` entity and repository - Password reuse prevention
-- `PasswordResetToken` entity and repository - Secure password reset system
-- `AccountLockoutService` - Failed login tracking and account lockout
-- `PasswordResetService` - Token-based password reset workflow
+Build the UI around storing and retrieving JSON data.
 
-**Enhanced Components:**
-- `User` entity - Added lockout tracking fields
-- `AuthController` - Enhanced with lockout checking and password reset endpoints
-- `UserService` - Integrated password validation and history checking
-- `SecurityConfig` - Updated configuration properties
+Required behavior:
 
-**New API Endpoints:**
-- `POST /api/v1/auth/password-reset/request` - Request password reset
-- `POST /api/v1/auth/password-reset/confirm` - Confirm password reset with new password
-- `GET /api/v1/auth/password-reset/validate` - Validate reset token
+- Log in and maintain the authenticated session.
+- Refresh an expired access token using the refresh token.
+- Display the current user and accessible categories.
+- Create entries with JSON content, tags, and an optional category.
+- Edit and soft-delete entries owned by the current user.
+- View both owned data and data shared with the user.
+- Search by one or more tags and category path, including supported wildcards.
+- Display useful validation and authorization errors instead of raw server responses.
+- Return the user to login when tokens are expired, revoked, or invalid.
 
-**Configuration Properties:**
-- `hiip.security.max-failed-attempts` (default: 5)
-- `hiip.security.lockout-duration-minutes` (default: 30)
-- `hiip.security.password-history-count` (default: 5)
-- `hiip.password-reset.token-expiration-hours` (default: 24)
+Acceptance criteria:
 
-## �🚨 Priority 1: Essential for Production
+- A normal user can log in, create, search, edit, and soft-delete data without curl or Swagger.
+- A user cannot edit or delete another user's data through the UI.
+- Read-only shared data is visibly distinguishable from editable owned data.
+- Loading, empty, validation, authorization, and request-failure states are represented.
 
-### Security & Authentication Enhancements
-- [x] **JWT Token Authentication** ✅ COMPLETED
-  - Replace basic authentication with JWT tokens for better security
-  - Implement token refresh mechanism
-  - Add token expiration and blacklisting
-  
-- [x] **Password Security** ✅ COMPLETED
-  - ✅ Add password strength validation
-  - ✅ Implement password reset functionality via email
-  - ✅ Add password history to prevent reuse
-  - ✅ Account lockout after failed login attempts
-  
-  **Implementation Details:**
-  - `PasswordValidator` utility with comprehensive validation rules
-  - Password strength scoring (0-100) and descriptive feedback
-  - `PasswordHistory` entity to track and prevent password reuse
-  - Account lockout after configurable failed attempts (default: 5)
-  - Configurable lockout duration (default: 30 minutes)
-  - Token-based password reset with email integration
-  - Automatic account unlock after password reset
-  - Enhanced authentication endpoints with lockout status
-  - Configurable security policies via application properties
+### [ ] 1.2 Category management in the UI
 
-### Testing & Quality Assurance
-- [x] **Comprehensive Test Suite** ✅ COMPLETED
-  - Unit tests for all service classes
-  - Integration tests for controllers
-  - Repository tests with @DataJpaTest
-  - Security tests for authentication/authorization
-  - Test coverage reporting
+- Display only categories accessible to the current user.
+- Display descendants of shared categories.
+- Allow permitted users to create categories and child categories.
+- Prevent category creation below a read-only category.
+- Allow owners to share and unshare categories.
+- Allow owners to choose read or read/write permission.
+- Display inherited access where practical.
+- Separate global, owned, and shared categories in the interface.
+- Show global-category controls only when policy and role permit them.
 
-### Error Handling & Validation
-- [x] **Enhanced Error Handling** ✅ COMPLETED
-  - Global exception handler
-  - Standardized error response format
-  - Custom business exceptions
-  - Validation error responses
+### [ ] 1.3 Admin user management in the UI
 
-- [x] **Data Validation & Constraints** ✅ COMPLETED
-  - Add comprehensive input validation annotations
-  - Implement custom validators for business rules
-  - Add database constraints and indexes
-  - Data sanitization for XSS prevention
+Administrators must be able to manage users from the UI because account creation is intentionally admin-only.
 
-### Database & Persistence
-- [x] **Production Database Support** ✅ COMPLETED
-  - Add PostgreSQL/MySQL support for production
-  - Database migration scripts (Flyway/Liquibase)
-  - Connection pooling configuration
-  - Database backup and recovery procedures
+- List active users and optionally inactive users.
+- Create users with username, email, password, role, and active status.
+- Edit user details and roles.
+- Activate and deactivate users.
+- Display lockout status where relevant.
+- Hide administrative controls from normal users and enforce the restriction server-side.
+- Show duplicate username/email and weak-password validation errors.
 
-## 🔥 Priority 2: Important for User Experience
+## Priority 2: Category Permissions and Sharing
 
-### API Improvements
-- [x] **Pagination & Filtering** ✅ COMPLETED
-  - Implement pagination for data listing
-  - Advanced search filters
-  - Sorting capabilities
-  - Query optimization
+### [ ] 2.1 Inherited category access
 
-- [x] **API Documentation** ✅ COMPLETED
-  - Add Swagger/OpenAPI documentation
-  - Interactive API documentation (Swagger UI)
-  - API usage examples
-  - Contract testing with Spring Cloud Contract
+Sharing `work` as read-only must allow the recipient to read data in `work`, `work/projects`, and `work/projects/client-a`. The recipient must not be able to create, edit, move, or delete data in that subtree, nor create child categories below it.
 
-- [ ] **Bulk Operations**
-  - Bulk create/update/delete operations
-  - Data export functionality (JSON/CSV/XML)
-  - Data import with validation
-  - Batch processing capabilities
+Implementation requirements:
 
-### Monitoring & Observability
-- [x] **Application Monitoring** ✅ COMPLETED
-  - Spring Boot Actuator endpoints
-  - Health checks and metrics
-  - Application performance monitoring (APM)
-  - Request/response logging middleware
+- Determine access using category ancestry, not only the exact data category.
+- Apply inheritance to category lists, searches, trees, ID lookups, and data searches.
+- Unsharing a parent removes inherited access from descendants unless another explicit share grants access.
+- Define deterministic precedence when multiple shares apply. Recommended behavior: the most specific applicable share controls the descendant, while ownership always takes precedence.
 
-- [x] **Logging & Auditing** ✅ COMPLETED
-  - Structured logging with JSON format
-  - Audit trail for data changes
-  - Log aggregation configuration
-  - Security event logging
+### [ ] 2.2 Enforce read/write permissions in every mutation path
 
-### Configuration Management
-- [x] **Production Configuration** ✅ COMPLETED
-  - Profile-specific configurations (dev/test/prod)
-  - External configuration server support
-  - Secrets management (Vault integration)
-  - Feature flags
+Permission checks must be in the service layer and must not depend on the UI.
 
-## 🎯 Priority 3: Enhanced Functionality
+- Owners may use their own categories.
+- Users may use categories shared with write permission.
+- Global-category access follows the configured global-category policy.
+- Read-only users receive a forbidden response when creating or updating data in the category.
+- Assigning an existing category must perform the same checks as creating a category.
+- Moving data must validate ownership and destination-category permission.
+- Only owners or write-authorized collaborators may create children or modify sharing.
+- Global categories cannot be modified by ordinary users unless policy explicitly allows it.
 
-### Advanced Security
-- [x] **Role-Based Access Control (RBAC)** ✅ COMPLETED
-  - Implement more granular permissions beyond admin/user
-  - Add role management API endpoints
-  - Implement method-level security annotations
+### [ ] 2.3 Secure category reads
 
-- [x] **API Security** ✅ COMPLETED
-  - API rate limiting
-  - CORS configuration
-  - API versioning strategy
-  - Request throttling
+- Require authentication for all category endpoints unless explicitly documented as public.
+- Replace permissive catch-all security with authenticated-by-default behavior.
+- Filter flat lists, roots, trees, searches, and ID lookups by effective user access.
+- Do not expose unrelated private category names, paths, owners, or share lists.
+- Show share details only to the owner or an explicitly authorized administrator.
 
-### Performance & Scalability
-- [ ] **Caching Strategy**
-  - Redis integration for session storage
-  - Data caching with Spring Cache
-  - Tag-based cache invalidation
-  - Cache warming strategies
+## Priority 3: Reliable Persistence
 
-- [x] **Performance Optimization** ✅ COMPLETED
-  - Database query optimization
-  - Connection pooling tuning
-  - Lazy loading configuration
-  - Response compression
+### [ ] 3.1 Establish the production database path
 
-### Data Management
-- [x] **Advanced Data Features** ✅ COMPLETED
-  - Data versioning/history tracking
-  - Soft delete with restoration capability
-  - Data archiving for old records
-  - Data retention policies
-  - Data anonymization features
+The current default is in-memory H2, so data is lost on restart unless another datasource is configured. Add a documented PostgreSQL deployment path.
 
-- [x] **Search & Discovery** ✅ COMPLETED
-  - Tag suggestions based on existing data
-  - Full-text search capabilities
-  - Elasticsearch integration
-  - Search analytics
+- PostgreSQL is the recommended production database.
+- H2 remains available for local development and automated tests.
+- Production startup validates required datasource configuration.
+- Production schema changes use Flyway or Liquibase rather than `ddl-auto=update`.
+- Transactions cover category creation, sharing, data mutation, and password-reset updates.
+- Add indexes for owner, category, hidden/deleted state, tags, and sharing queries.
 
-## 🌟 Priority 4: Nice to Have
+### [ ] 3.2 Document backup and recovery
 
-### User Experience Enhancements
-- [x] **Advanced Features** ✅ COMPLETED
-  - Favorite/bookmark functionality
-  - User preferences and settings
-  - Data sharing between users
-  - Collaboration features
+Document and verify database backup, restore, recovery expectations, migration recovery, and administrative data export.
 
-- [ ] **Content Management**
-  - File attachment support
-  - Rich text content support
-  - Content templates
-  - Content categorization
+### [ ] 3.3 Preserve soft deletion and add future retention
 
-### Integration & External Services
-- [x] **External Integrations** ✅ COMPLETED
-  - Email service for notifications
-  - File storage integration (S3/MinIO)
-  - Webhook support for events
-  - Third-party API integrations
+Keep soft deletion as the current behavior:
 
-- [ ] **Notification System**
-  - In-app notifications
-  - Email notifications
-  - Push notifications
-  - Notification preferences
+- Deleted entries are hidden from normal lists and searches.
+- Repeated deletion is idempotent.
+- Ownership rules still apply to deletion.
+- API documentation clearly states that delete means hide, not permanent removal.
 
-### Development & Deployment
-- [x] **Container & Deployment** ✅ COMPLETED
-  - Multi-stage Docker builds
-  - Docker Compose for development
-  - Kubernetes deployment manifests
-  - Health check endpoints for containers
-  - CI/CD pipeline configuration
+Future enhancement:
 
-- [x] **Development Tools** ✅ COMPLETED
-  - Development profile with test data
-  - Code formatting and linting configuration
-  - Git hooks for pre-commit validation
-  - IDE configuration files
+- Add `deletedAt` or an equivalent lifecycle state.
+- Add restore before expiry.
+- Add configurable retention, with 30 days as the initial example.
+- Permanently delete expired records through an admin-controlled scheduled job.
+- Never remove active or restored data during cleanup.
 
-### Documentation & Developer Experience
-- [x] **Enhanced Documentation** ✅ COMPLETED
-  - Developer setup guide
-  - Architecture documentation
-  - Deployment guides
-  - Troubleshooting guides
+## Priority 4: Authentication and Security Hardening
 
-- [x] **API Testing** ✅ COMPLETED
-  - Postman collection
-  - Integration test automation
-  - Load testing configuration
-  - Performance benchmarks
+### [ ] 4.1 Harden deployment security
 
-## 🚀 Future Enhancements
+- Remove the usable hardcoded JWT secret default.
+- Require a strong environment-provided secret in production and fail startup when it is missing or weak.
+- Isolate development defaults from production configuration.
+- Replace default admin credentials before production use.
+- Disable the H2 console in production.
+- Protect undocumented and future routes by default.
 
-### Client Applications
-- [x] **Frontend Applications** ✅ COMPLETED
-  - Web UI (React/Vue/Angular)
-  - Mobile applications (React Native/Flutter)
-  - Desktop applications (Electron)
-  - Browser extension
+### [ ] 4.2 Complete the refresh-token lifecycle
 
-- [ ] **Command Line Tools**
-  - CLI tool for API interaction
-  - Data migration tools
-  - Administration utilities
-  - Backup/restore tools
+- Revoke access and refresh tokens on logout, or use a server-side token-family model.
+- Check revocation when a refresh token is used.
+- Rotate refresh tokens safely and reject replayed tokens when rotation is enabled.
+- Revoke active token families when an account is deactivated or its password is reset.
+- Schedule and verify cleanup of expired revoked tokens.
 
-### Advanced Analytics
-- [ ] **Analytics & Reporting**
-  - Usage analytics
-  - Data insights dashboard
-  - Custom reports
-  - Export capabilities
+### [ ] 4.3 Complete password reset and account recovery
 
-- [ ] **Machine Learning Features**
-  - Content recommendation
-  - Auto-tagging suggestions
-  - Usage pattern analysis
-  - Anomaly detection
+- Integrate a real email provider instead of printing reset tokens to stdout.
+- Configure provider credentials and reset URLs through environment configuration.
+- Send the resolved user's email address, not the original username-or-email input.
+- Keep reset requests indistinguishable for existing and unknown users.
+- Add reset-token rate limiting and atomic token invalidation.
+- Add password-reset UI after the primary data workflow.
 
-### Enterprise Features
-- [ ] **Multi-tenancy**
-  - Organization/tenant management
-  - Data isolation
-  - Billing integration
-  - Resource quotas
+## Priority 5: Automated Verification
 
-- [ ] **Compliance & Security**
-  - GDPR compliance features
-  - Data export/deletion requests
-  - Compliance reporting
-  - Security audit logs
+### [ ] 5.1 Add automated verification
 
-## 📋 Implementation Notes
+The current Maven build succeeds without compiling tests. Add real tests before considering the implementation complete.
 
-### Getting Started
-1. Begin with Priority 1 items as they are essential for a production-ready application
-2. Focus on testing infrastructure early to ensure quality
-3. Implement security features before deploying to production
-4. Database migration should be planned carefully
+- Service tests for inherited access and permission decisions.
+- Repository tests for ownership, hidden data, categories, tags, and sharing.
+- Controller tests for authentication and HTTP status behavior.
+- Security tests proving category endpoints reject anonymous requests.
+- Tests proving users cannot access unrelated categories or data.
+- Tests proving read-only sharing blocks create and update operations.
+- Tests for multiple levels of inherited access and unsharing.
+- Tests proving global-category policy defaults to admin-only.
+- Authentication tests for lockout, password reset, logout, refresh, and revocation.
+- PostgreSQL or production-compatible persistence tests.
 
-### Technical Considerations
-- Maintain backward compatibility when implementing API changes
-- Consider performance impact of new features
-- Ensure proper error handling and logging for all new features
-- Document all configuration changes and new environment variables
+The Maven test command must report executed tests rather than only `No sources to compile`.
 
-### Dependencies to Add
-- Spring Boot Starter Test
-- Spring Security Test
-- Flyway or Liquibase for database migrations
-- Spring Boot Actuator for monitoring
-- Swagger/OpenAPI for documentation
-- Redis for caching (when implementing caching features)
+## Deferred Features
 
-### Estimated Effort
-- **Priority 1**: 3-4 weeks (essential features)
-- **Priority 2**: 2-3 weeks (user experience improvements)
-- **Priority 3**: 3-4 weeks (enhanced functionality)
-- **Priority 4**: 4-6 weeks (nice to have features)
+These remain lower priority until the primary UI and persistence path are reliable:
 
-*Note: Effort estimates are approximate and may vary based on team size and experience.*
+- Bulk create, update, and delete
+- JSON/CSV/XML import and export
+- Attachments and external file storage
+- Rich text and content templates
+- Notifications and notification preferences
+- Favorites/bookmarks and user preferences
+- Caching and Redis integration
+- Full-text search and search analytics
+- Webhooks and third-party event integrations
+- CLI administration and backup tools
+- Mobile and desktop clients
+- Usage analytics and reporting
+- Multi-tenancy, quotas, and billing
+- GDPR and formal compliance workflows
 
----
+Deferred items must not be marked complete until their implementation and tests exist in the repository.
 
-**Last Updated**: October 26, 2025  
-**Version**: 2.0  
-**Maintainer**: Development Team
+## [ ] 4.4 Add policy configuration
+
+The following properties describe the required policy. Exact names may change during implementation, but the defaults and behavior should remain documented:
+
+```properties
+# Only administrators may create global categories by default.
+hiip.categories.global-creation-role=ADMIN
+
+# Future soft-delete retention; disabled until restore and cleanup exist.
+hiip.data.retention.enabled=false
+hiip.data.retention.days=30
+
+# Production requires an externally supplied secret.
+hiip.jwt.require-external-secret=true
+```
+
+## Implementation Guidance
+
+1. Implement and test effective category access, including inherited permissions.
+2. Enforce category permissions in service-layer mutation paths.
+3. Secure and filter category endpoints.
+4. Complete the primary UI data workflow and admin user management.
+5. Establish PostgreSQL migrations, transactions, backup, and restore documentation.
+6. Add authentication hardening and password-reset delivery.
+7. Add deferred features only after the preceding behavior is covered by tests.
 
