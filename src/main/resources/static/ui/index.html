@@ -7,134 +7,80 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Login Page -->
     <div id="loginPage" class="login-container">
         <div class="login-box">
-            <h1>🚀 HIIP</h1>
-            <p class="subtitle">Data Storage Management System</p>
-            
+            <div class="brand-lockup"><span class="brand-mark">H</span><span>HIIP</span></div>
+            <p class="eyebrow">Personal data workspace</p>
+            <h1>Keep your useful things close.</h1>
+            <p class="subtitle">Store structured notes, references, and JSON data in one quiet place.</p>
             <div id="loginAlert"></div>
-            
             <form id="loginForm" onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required autocomplete="username">
+                    <input type="text" id="username" name="username" required autocomplete="username" placeholder="Enter your username">
                 </div>
-                
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                    <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Enter your password">
                 </div>
-                
-                <button type="submit" class="login-button" id="loginButton">
-                    Login
-                </button>
+                <button type="submit" class="login-button" id="loginButton">Enter workspace <span>↗</span></button>
             </form>
-
             <div class="footer-links">
-                <a href="/swagger-ui.html" target="_blank">📖 API Documentation</a>
-                <a href="/actuator/health" target="_blank">💓 Health Check</a>
+                <a href="/swagger-ui.html" target="_blank">API docs</a>
+                <a href="/actuator/health" target="_blank">System health</a>
             </div>
         </div>
+        <div class="login-aside"><span>HIIP / 01</span><strong>A calm surface for<br>messy information.</strong><span>JSON · TAGS · CATEGORIES</span></div>
     </div>
 
-    <!-- Dashboard -->
     <div id="dashboard" class="dashboard hidden">
-        <div class="dashboard-header">
-            <h1>🚀 HIIP Data Storage</h1>
-            <div class="user-info">
-                <span>Welcome, <strong id="usernameDisplay"></strong></span>
-                <button class="logout-button" onclick="handleLogout()">Logout</button>
+        <aside class="sidebar">
+            <div class="sidebar-brand"><span class="brand-mark">H</span><span>HIIP</span></div>
+            <div class="sidebar-section-label">Library</div>
+            <nav class="primary-nav">
+                <button class="nav-item active" id="allDataNav" onclick="showAllData()"><span class="nav-icon">◈</span> All data <span class="nav-count" id="dataCount">0</span></button>
+                <button class="nav-item" id="ownedDataNav" onclick="showOwnedData()"><span class="nav-icon">□</span> My data</button>
+                <button class="nav-item" id="sharedDataNav" onclick="showSharedData()"><span class="nav-icon">◌</span> Shared with me</button>
+            </nav>
+            <div class="sidebar-section-label category-label">Categories <button class="icon-button" title="Refresh categories" onclick="loadCategories()">↻</button></div>
+            <nav id="categoryNav" class="category-nav"><span class="sidebar-muted">Loading categories...</span></nav>
+            <div class="sidebar-bottom">
+                <a href="/swagger-ui.html" target="_blank" class="sidebar-link">↗ API documentation</a>
+                <button class="account-chip" onclick="handleLogout()"><span class="avatar" id="avatarInitial">?</span><span><strong id="usernameDisplay"></strong><small>Sign out</small></span><span class="account-arrow">→</span></button>
             </div>
-        </div>
+        </aside>
 
-        <div class="dashboard-content">
-            <!-- Create Data Panel -->
-            <div class="panel">
-                <h2>📝 Create Data</h2>
-                
-                <form id="createDataForm" onsubmit="handleCreateData(event)">
-                    <div class="form-group">
-                        <label for="dataContent">Content (JSON)</label>
-                        <textarea id="dataContent" placeholder='{"key": "value", "message": "Hello World"}'></textarea>
+        <main class="workspace">
+            <header class="workspace-header">
+                <div><p class="eyebrow">Your library</p><h1 id="workspaceTitle">All data</h1><p class="workspace-subtitle" id="workspaceSubtitle">Everything you can access, in one stream.</p></div>
+                <div class="header-actions"><button class="button secondary compact" onclick="loadAllData()">↻ Refresh</button><button class="button primary compact" onclick="focusComposer()">＋ New entry</button></div>
+            </header>
+            <section class="workspace-grid">
+                <div class="results-column">
+                    <div class="toolbar">
+                        <div class="search-box"><span>⌕</span><input id="searchCategory" list="searchCategorySuggestions" placeholder="Search by category path..." autocomplete="off" onkeydown="if (event.key === 'Enter') searchData()"><datalist id="searchCategorySuggestions"></datalist></div>
+                        <div class="toolbar-tags tags-input" id="searchTagsContainer" onclick="focusSearchTagInput()"><input type="text" id="searchTagsInput" placeholder="Add tag + Enter" onkeydown="handleSearchTagInput(event)"></div>
+                        <button class="button secondary compact" onclick="clearSearchFilters()">Clear</button>
+                        <button class="button primary compact" onclick="searchData()">Search</button>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="categoryInput">Category (use / for hierarchy)</label>
-                        <input type="text" id="categoryInput" list="categorySuggestions" 
-                               placeholder="e.g., electronics/computers/laptops or select from existing" 
-                               autocomplete="off">
-                        <datalist id="categorySuggestions">
-                            <!-- Populated dynamically -->
-                        </datalist>
-                        <small style="color: #666; font-size: 0.9rem;">Select an existing category or type a new one. Use slashes for hierarchy.</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="dataTags">Tags</label>
-                        <div class="tags-input" id="tagsContainer" onclick="focusTagInput()">
-                            <input type="text" id="tagInput" placeholder="Type and press Enter" 
-                                   onkeydown="handleTagInput(event)">
-                        </div>
-                    </div>
-                    
-                    <div id="createAlert"></div>
-                    
-                    <button type="submit" class="button">Create Data</button>
-                    <button type="button" class="button secondary" onclick="clearCreateForm()">Clear</button>
-                </form>
-            </div>
-
-            <!-- Query Data Panel -->
-            <div class="panel">
-                <h2>🔍 Query Data</h2>
-                
-                <!-- Search Filters -->
-                <div class="search-filters" style="margin-bottom: 1.5rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
-                    <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1rem;">Search Filters</h3>
-                    
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="searchCategory">Category</label>
-                        <input type="text" id="searchCategory" list="searchCategorySuggestions" 
-                               placeholder="Leave empty for all categories" 
-                               autocomplete="off">
-                        <datalist id="searchCategorySuggestions">
-                            <!-- Populated dynamically -->
-                        </datalist>
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label for="searchTagsInput">Tags</label>
-                        <div class="tags-input" id="searchTagsContainer" onclick="focusSearchTagInput()">
-                            <input type="text" id="searchTagsInput" placeholder="Type tags and press Enter" 
-                                   onkeydown="handleSearchTagInput(event)">
-                        </div>
-                        <small style="color: #666; font-size: 0.9rem;">Leave empty to search by category only</small>
-                    </div>
-                    
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="button" onclick="searchData()">🔍 Search</button>
-                        <button class="button secondary" onclick="clearSearchFilters()">Clear Filters</button>
-                        <button class="button secondary" onclick="loadAllData()">Load All</button>
-                    </div>
+                    <div id="queryAlert"></div>
+                    <div class="result-summary"><span id="resultSummary">Your accessible entries</span><span class="result-rule"></span><span id="resultCount">0 entries</span></div>
+                    <div id="dataListContainer" class="data-list"><div class="loading">Loading workspace</div></div>
                 </div>
-                
-                <div id="queryAlert"></div>
-                
-                <div id="dataListContainer" class="data-list">
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
-                            <path d="M7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/>
-                        </svg>
-                        <p>No data loaded yet</p>
-                        <p style="font-size: 0.9rem;">Click "Load All Data" to retrieve data</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                <aside class="composer-panel" id="composerPanel">
+                    <div class="composer-header"><div><p class="eyebrow">Capture</p><h2 id="createHeading">New entry</h2></div><span class="composer-dot"></span></div>
+                    <p class="composer-hint">Keep the structure simple. JSON makes your data portable.</p>
+                    <form id="createDataForm" onsubmit="handleCreateData(event)">
+                        <div class="form-group"><label for="dataContent">Content</label><textarea id="dataContent" placeholder='{ "key": "value" }'></textarea></div>
+                        <div class="form-group"><label for="categoryInput">Category</label><input type="text" id="categoryInput" list="categorySuggestions" placeholder="e.g. work/research" autocomplete="off"><datalist id="categorySuggestions"></datalist></div>
+                        <div class="form-group"><label for="dataTags">Tags</label><div class="tags-input" id="tagsContainer" onclick="focusTagInput()"><input type="text" id="tagInput" placeholder="Type a tag + Enter" onkeydown="handleTagInput(event)"></div></div>
+                        <div id="createAlert"></div>
+                        <div class="composer-actions"><button type="submit" class="button primary" id="saveDataButton">Save entry</button><button type="button" class="button secondary hidden" id="cancelEditButton" onclick="clearCreateForm()">Cancel</button></div>
+                    </form>
+                </aside>
+            </section>
+        </main>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>

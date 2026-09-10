@@ -1,10 +1,63 @@
 // State
 let authToken = localStorage.getItem('hiip_token') || '';
+let refreshToken = localStorage.getItem('hiip_refresh_token') || '';
 let currentUser = localStorage.getItem('hiip_user') || '';
 let currentTags = [];
 let dataCache = [];
 let categoriesCache = [];
 let searchTags = [];
+let editingDataId = null;
+let dataView = 'all';
+
+async function authenticatedFetch(url, options = {}, retry = true) {
+    const requestOptions = {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(options.headers || {}),
+            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+        }
+    };
+
+    const response = await fetch(url, requestOptions);
+    if (response.status !== 401 || !retry || !refreshToken) {
+        return response;
+    }
+
+    const refreshed = await fetch('/api/v1/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+    });
+
+    if (!refreshed.ok) {
+        handleLogout();
+        return response;
+    }
+
+    const tokenData = await refreshed.json();
+    authToken = tokenData.accessToken;
+    refreshToken = tokenData.refreshToken || refreshToken;
+    localStorage.setItem('hiip_token', authToken);
+    localStorage.setItem('hiip_refresh_token', refreshToken);
+
+    return authenticatedFetch(url, options, false);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+function showAlert(elementId, message, type = '') {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    element.innerHTML = message ? `<div class="alert ${type ? `alert-${type}` : ''}">${escapeHtml(message)}</div>` : '';
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -36,9 +89,11 @@ async function handleLogin(event) {
         if (response.ok) {
             const data = await response.json();
             authToken = data.accessToken;
+            refreshToken = data.refreshToken || '';
             currentUser = data.username;
             
             localStorage.setItem('hiip_token', authToken);
+            localStorage.setItem('hiip_refresh_token', refreshToken);
             localStorage.setItem('hiip_user', currentUser);
             
             showDashboard();
@@ -57,8 +112,10 @@ async function handleLogin(event) {
 // Logout Handler
 function handleLogout() {
     authToken = '';
+    refreshToken = '';
     currentUser = '';
     localStorage.removeItem('hiip_token');
+    localStorage.removeItem('hiip_refresh_token');
     localStorage.removeItem('hiip_user');
     
     document.getElementById('dashboard').classList.add('hidden');
@@ -67,6 +124,7 @@ function handleLogout() {
     
     // Clear data
     dataCache = [];
+    editingDataId = null;
     document.getElementById('dataListContainer').innerHTML = `
         <div class="empty-state">
             <svg viewBox="0 0 24 24" fill="currentColor">
@@ -84,9 +142,46 @@ function showDashboard() {
     document.getElementById('loginPage').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
     document.getElementById('usernameDisplay').textContent = currentUser;
+    document.getElementById('avatarInitial').textContent = currentUser.charAt(0).toUpperCase() || '?';
     
-    // Load categories for the combo box
     loadCategories();
+    loadAllData();
+}
+
+function setActiveNav(activeId) {
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.getElementById(activeId)?.classList.add('active');
+}
+
+function setWorkspaceContext(title, subtitle) {
+    document.getElementById('workspaceTitle').textContent = title;
+    document.getElementById('workspaceSubtitle').textContent = subtitle;
+}
+
+function showAllData() {
+    dataView = 'all';
+    setActiveNav('allDataNav');
+    setWorkspaceContext('All data', 'Everything you can access, in one stream.');
+    renderDataList();
+}
+
+function showOwnedData() {
+    dataView = 'owned';
+    setActiveNav('ownedDataNav');
+    setWorkspaceContext('My data', 'Entries created and maintained by you.');
+    renderDataList();
+}
+
+function showSharedData() {
+    dataView = 'shared';
+    setActiveNav('sharedDataNav');
+    setWorkspaceContext('Shared with me', 'Read and collaborate on entries from your network.');
+    renderDataList();
+}
+
+function focusComposer() {
+    document.getElementById('dataContent').focus();
+    document.getElementById('composerPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Tag Input Handlers
@@ -142,17 +237,12 @@ function focusTagInput() {
 // Load Categories
 async function loadCategories() {
     try {
-        const response = await fetch('/api/v1/categories/my-categories', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await authenticatedFetch('/api/v1/categories/my-categories');
 
         if (response.ok) {
             categoriesCache = await response.json();
             populateCategoryDatalist();
+            renderCategoryNavigation();
         } else if (response.status === 401) {
             handleLogout();
         } else {
@@ -161,6 +251,32 @@ async function loadCategories() {
     } catch (error) {
         console.error('Error loading categories:', error);
     }
+}
+
+function renderCategoryNavigation() {
+    const navigation = document.getElementById('categoryNav');
+    if (!navigation) return;
+
+    const categories = [...categoriesCache].sort((a, b) => a.path.localeCompare(b.path));
+    if (categories.length === 0) {
+        navigation.innerHTML = '<span class="sidebar-muted">No categories yet</span>';
+        return;
+    }
+
+    navigation.innerHTML = categories.map(category => `
+        <button type="button" title="${escapeHtml(category.path)}" onclick="selectCategory('${encodeURIComponent(category.path)}', this)">
+            ${category.isGlobal ? '◇' : '·'} ${escapeHtml(category.path)}
+        </button>
+    `).join('');
+}
+
+function selectCategory(encodedPath, element) {
+    const path = decodeURIComponent(encodedPath);
+    document.querySelectorAll('.category-nav button').forEach(item => item.classList.remove('active'));
+    element.classList.add('active');
+    document.getElementById('searchCategory').value = path;
+    setWorkspaceContext(path, 'Entries filed in this category and its accessible data.');
+    searchData();
 }
 
 function populateCategoryDatalist() {
@@ -215,7 +331,7 @@ async function handleCreateData(event) {
         return;
     }
     
-    alertDiv.innerHTML = '<div class="alert">Creating data...</div>';
+    alertDiv.innerHTML = `<div class="alert">${editingDataId ? 'Saving changes...' : 'Creating data...'}</div>`;
     
     // Debug logging
     const requestData = {
@@ -228,18 +344,14 @@ async function handleCreateData(event) {
     console.log('Category:', category);
     
     try {
-        const response = await fetch('/api/v1/data', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
+        const response = await authenticatedFetch(editingDataId ? `/api/v1/data/${editingDataId}` : '/api/v1/data', {
+            method: editingDataId ? 'PUT' : 'POST',
             body: JSON.stringify(requestData)
         });
 
         if (response.ok) {
             const data = await response.json();
-            alertDiv.innerHTML = '<div class="alert alert-success">✅ Data created successfully!</div>';
+            alertDiv.innerHTML = `<div class="alert alert-success">${editingDataId ? 'Changes saved successfully.' : 'Data created successfully.'}</div>`;
             clearCreateForm();
             
             // Refresh data list and categories
@@ -263,6 +375,10 @@ function clearCreateForm() {
     document.getElementById('dataContent').value = '';
     document.getElementById('categoryInput').value = '';
     currentTags = [];
+    editingDataId = null;
+    document.getElementById('createHeading').textContent = '📝 Create Data';
+    document.getElementById('saveDataButton').textContent = 'Create Data';
+    document.getElementById('cancelEditButton').classList.add('hidden');
     renderTags();
 }
 
@@ -275,13 +391,7 @@ async function loadAllData() {
     alertDiv.innerHTML = '';
     
     try {
-        const response = await fetch('/api/v1/data', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await authenticatedFetch('/api/v1/data/accessible');
 
         if (response.ok) {
             dataCache = await response.json();
@@ -305,8 +415,15 @@ function refreshData() {
 // Render Data List
 function renderDataList() {
     const container = document.getElementById('dataListContainer');
+    const visibleData = dataCache.filter(item => {
+        if (dataView === 'owned') return item.owner === currentUser;
+        if (dataView === 'shared') return item.owner !== currentUser;
+        return true;
+    });
+    document.getElementById('dataCount').textContent = dataCache.length;
+    document.getElementById('resultCount').textContent = `${visibleData.length} ${visibleData.length === 1 ? 'entry' : 'entries'}`;
     
-    if (dataCache.length === 0) {
+    if (visibleData.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <svg viewBox="0 0 24 24" fill="currentColor">
@@ -321,16 +438,21 @@ function renderDataList() {
     }
     
     let html = '';
-    dataCache.forEach(item => {
+    visibleData.forEach(item => {
         const tagsHtml = item.tags && item.tags.length > 0
-            ? item.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+            ? item.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')
             : '<span style="color: #999;">No tags</span>';
         
         const categoryHtml = item.category 
-            ? `<div class="data-item-category">📁 ${item.category}</div>` 
+            ? `<div class="data-item-category">📁 ${escapeHtml(item.category)}</div>`
             : '';
         
         const contentStr = JSON.stringify(item.content, null, 2);
+        const isOwner = item.owner === currentUser;
+        const actionsHtml = isOwner
+            ? `<button class="button secondary" onclick="editData(${item.id})">Edit</button>
+               <button class="button danger" onclick="deleteData(${item.id})">Delete</button>`
+            : '<span class="read-only-badge">Read only</span>';
         
         html += `
             <div class="data-item">
@@ -338,20 +460,36 @@ function renderDataList() {
                     <span class="data-item-id">#${item.id}</span>
                     <div class="data-item-actions">
                         <button class="button secondary" onclick="viewData(${item.id})">View</button>
-                        <button class="button danger" onclick="deleteData(${item.id})">Delete</button>
+                        ${actionsHtml}
                     </div>
                 </div>
                 ${categoryHtml}
-                <div class="data-item-content">${contentStr}</div>
+                <div class="data-item-content">${escapeHtml(contentStr)}</div>
                 <div class="data-item-tags">${tagsHtml}</div>
                 <div class="data-item-meta">
-                    Owner: ${item.owner} | Created: ${new Date(item.createdAt).toLocaleString()}
+                    Owner: ${escapeHtml(item.owner)} | Created: ${new Date(item.createdAt).toLocaleString()}
                 </div>
             </div>
         `;
     });
     
     container.innerHTML = html;
+}
+
+function editData(id) {
+    const item = dataCache.find(data => data.id === id);
+    if (!item || item.owner !== currentUser) return;
+
+    editingDataId = id;
+    document.getElementById('dataContent').value = JSON.stringify(item.content, null, 2);
+    document.getElementById('categoryInput').value = item.category || '';
+    currentTags = item.tags ? [...item.tags] : [];
+    document.getElementById('createHeading').textContent = `✏️ Edit Data #${id}`;
+    document.getElementById('saveDataButton').textContent = 'Save Changes';
+    document.getElementById('cancelEditButton').classList.remove('hidden');
+    renderTags();
+    document.getElementById('dataContent').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // View Data
@@ -371,11 +509,8 @@ async function deleteData(id) {
     const alertDiv = document.getElementById('queryAlert');
     
     try {
-        const response = await fetch(`/api/v1/data/${id}`, {
+        const response = await authenticatedFetch(`/api/v1/data/${id}`, {
             method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
         });
 
         if (response.ok) {
@@ -457,13 +592,7 @@ async function searchData() {
     alertDiv.innerHTML = '';
     
     try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await authenticatedFetch(`/api/v1/data/accessible/search?${params.toString()}`);
 
         if (response.ok) {
             dataCache = await response.json();
@@ -483,6 +612,7 @@ async function searchData() {
                 summary += 'all data';
             }
             summary += ` - ${dataCache.length} item${dataCache.length !== 1 ? 's' : ''} found`;
+            document.getElementById('resultSummary').textContent = summary;
             alertDiv.innerHTML = `<div class="alert">${summary}</div>`;
             setTimeout(() => alertDiv.innerHTML = '', 5000);
         } else if (response.status === 401) {
