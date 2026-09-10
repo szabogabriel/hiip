@@ -77,6 +77,17 @@
                         <div id="createAlert"></div>
                         <div class="composer-actions"><button type="submit" class="button primary" id="saveDataButton">Save entry</button><button type="button" class="button secondary hidden" id="cancelEditButton" onclick="clearCreateForm()">Cancel</button></div>
                     </form>
+                    <section class="sharing-panel hidden" id="sharingPanel">
+                        <div class="sharing-heading"><div><p class="eyebrow">Permissions</p><h3 id="sharingCategoryName">Share category</h3></div><span class="sharing-lock">⌁</span></div>
+                        <p class="sharing-description" id="sharingDescription">Share this category and its descendants.</p>
+                        <div id="sharingAlert"></div>
+                        <div id="shareList" class="share-list"></div>
+                        <form id="shareCategoryForm" class="share-form" onsubmit="handleShareCategory(event)">
+                            <div class="form-group"><label for="shareRecipient">Username or email</label><input type="text" id="shareRecipient" required placeholder="person@example.com" autocomplete="off"></div>
+                            <label class="permission-option"><input type="checkbox" id="shareCanWrite"><span><strong>Can edit</strong><small>Allow entries and child categories</small></span></label>
+                            <button type="submit" class="button primary compact">＋ Grant access</button>
+                        </form>
+                    </section>
                 </aside>
             </section>
         </main>

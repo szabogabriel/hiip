@@ -176,6 +176,27 @@ button { cursor: pointer; }
 .composer-panel .form-group textarea { min-height: 190px; }
 .composer-actions { display: flex; gap: 8px; }
 
+.sharing-panel { margin-top: 32px; padding-top: 25px; border-top: 1px solid var(--line); }
+.sharing-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.sharing-heading h3 { max-width: 250px; margin-top: 7px; overflow: hidden; color: var(--ink); font-size: 1.15rem; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.sharing-lock { color: var(--coral); font-size: 1.2rem; }
+.sharing-description { margin: 12px 0 17px; color: var(--muted); font-size: 0.78rem; line-height: 1.45; }
+.share-list { display: grid; gap: 7px; margin-bottom: 19px; }
+.share-row { display: flex; align-items: center; gap: 9px; padding: 8px; background: #f2f0e9; }
+.share-avatar { display: grid; width: 26px; height: 26px; flex: 0 0 26px; place-items: center; background: var(--deep); color: white; font: 700 0.72rem Georgia, serif; }
+.share-person { min-width: 0; flex: 1; }
+.share-person strong, .share-person small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share-person strong { color: var(--ink); font-size: 0.78rem; font-weight: 400; }
+.share-person small { margin-top: 2px; color: var(--muted); font: 0.65rem 'Courier New', monospace; }
+.share-remove { border: 0; background: transparent; color: var(--muted); font-size: 1.15rem; line-height: 1; }
+.share-remove:hover { color: #a8473d; }
+.share-empty { padding: 10px 0; color: var(--muted); font: 0.7rem 'Courier New', monospace; }
+.share-form { padding-top: 16px; border-top: 1px solid var(--line); }
+.permission-option { display: flex; align-items: flex-start; gap: 9px; margin: -3px 0 17px; color: var(--ink); cursor: pointer; font-size: 0.8rem; }
+.permission-option input { accent-color: var(--coral); margin-top: 2px; }
+.permission-option strong, .permission-option small { display: block; }
+.permission-option small { margin-top: 3px; color: var(--muted); font-size: 0.7rem; }
+
 /* Tags, alerts, and responsive behavior */
 .tags-input { display: flex; min-height: 40px; flex: 1; flex-wrap: wrap; align-items: center; gap: 5px; padding: 4px 7px; border: 1px solid var(--line); cursor: text; }
 .tags-input:focus-within { border-color: var(--coral); }

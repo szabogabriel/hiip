@@ -8,6 +8,7 @@ let categoriesCache = [];
 let searchTags = [];
 let editingDataId = null;
 let dataView = 'all';
+let selectedCategory = null;
 
 async function authenticatedFetch(url, options = {}, retry = true) {
     const requestOptions = {
@@ -272,11 +273,100 @@ function renderCategoryNavigation() {
 
 function selectCategory(encodedPath, element) {
     const path = decodeURIComponent(encodedPath);
+    selectedCategory = categoriesCache.find(category => category.path === path) || null;
     document.querySelectorAll('.category-nav button').forEach(item => item.classList.remove('active'));
     element.classList.add('active');
     document.getElementById('searchCategory').value = path;
     setWorkspaceContext(path, 'Entries filed in this category and its accessible data.');
+    renderSharingPanel();
     searchData();
+}
+
+function renderSharingPanel() {
+    const panel = document.getElementById('sharingPanel');
+    if (!selectedCategory) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('hidden');
+    document.getElementById('sharingCategoryName').textContent = selectedCategory.path;
+    const isOwner = selectedCategory.createdBy === currentUser;
+    document.getElementById('sharingDescription').textContent = isOwner
+        ? 'Access applies to this category and its descendants.'
+        : `Owned by ${selectedCategory.createdBy || 'another user'}. You can view data here according to your access.`;
+    document.getElementById('shareCategoryForm').classList.toggle('hidden', !isOwner);
+    document.getElementById('sharingLock').textContent = isOwner ? '⌁' : '◌';
+    renderShareList(selectedCategory.sharedWith || [], isOwner);
+}
+
+function renderShareList(shares, isOwner) {
+    const list = document.getElementById('shareList');
+    if (!shares.length) {
+        list.innerHTML = '<p class="share-empty">No one has access yet.</p>';
+        return;
+    }
+
+    list.innerHTML = shares.map(share => {
+        const permission = share.canWrite ? 'Can edit' : 'Read only';
+        const removeButton = isOwner
+            ? `<button type="button" class="share-remove" title="Remove access" onclick="unshareCategory('${encodeURIComponent(share.sharedWithUsername)}')">×</button>`
+            : '';
+        return `<div class="share-row"><span class="share-avatar">${escapeHtml(share.sharedWithUsername.charAt(0).toUpperCase())}</span><span class="share-person"><strong>${escapeHtml(share.sharedWithUsername)}</strong><small>${permission}</small></span>${removeButton}</div>`;
+    }).join('');
+}
+
+async function handleShareCategory(event) {
+    event.preventDefault();
+    if (!selectedCategory || selectedCategory.createdBy !== currentUser) return;
+
+    const recipient = document.getElementById('shareRecipient').value.trim();
+    const canWrite = document.getElementById('shareCanWrite').checked;
+    const alert = document.getElementById('sharingAlert');
+    alert.innerHTML = '';
+
+    try {
+        const response = await authenticatedFetch(`/api/v1/categories/${selectedCategory.id}/share`, {
+            method: 'POST',
+            body: JSON.stringify({ username: recipient, canRead: true, canWrite })
+        });
+        if (response.ok) {
+            const share = await response.json();
+            selectedCategory.sharedWith = [...(selectedCategory.sharedWith || []).filter(item => item.sharedWithUsername !== share.sharedWithUsername), share];
+            renderSharingPanel();
+            document.getElementById('shareCategoryForm').reset();
+            alert.innerHTML = '<div class="alert alert-success">Access granted.</div>';
+        } else if (response.status === 401) {
+            handleLogout();
+        } else {
+            const message = await response.text();
+            alert.innerHTML = `<div class="alert alert-error">${escapeHtml(message || 'Could not grant access.')}</div>`;
+        }
+    } catch (error) {
+        alert.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+    }
+}
+
+async function unshareCategory(encodedUsername) {
+    if (!selectedCategory || selectedCategory.createdBy !== currentUser) return;
+    const username = decodeURIComponent(encodedUsername);
+    if (!confirm(`Remove ${username}'s access to ${selectedCategory.path}?`)) return;
+
+    const alert = document.getElementById('sharingAlert');
+    try {
+        const response = await authenticatedFetch(`/api/v1/categories/${selectedCategory.id}/share/${encodeURIComponent(username)}`, { method: 'DELETE' });
+        if (response.ok) {
+            selectedCategory.sharedWith = (selectedCategory.sharedWith || []).filter(share => share.sharedWithUsername !== username);
+            renderSharingPanel();
+            alert.innerHTML = '<div class="alert alert-success">Access removed.</div>';
+        } else if (response.status === 401) {
+            handleLogout();
+        } else {
+            alert.innerHTML = '<div class="alert alert-error">Could not remove access.</div>';
+        }
+    } catch (error) {
+        alert.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+    }
 }
 
 function populateCategoryDatalist() {
