@@ -176,7 +176,7 @@ Include the JWT token in the Authorization header for all authenticated requests
 
 ```bash
 Authorization: Bearer <your-jwt-token>
-```gg
+```
 
 ### Password Security
 
