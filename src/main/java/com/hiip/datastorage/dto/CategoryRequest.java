@@ -1,5 +1,7 @@
 package com.hiip.datastorage.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 /**
  * Request DTO for creating a category
  */
@@ -8,6 +10,7 @@ public class CategoryRequest {
     private String path;
     private Long parentId;
     private boolean isGlobal = false;
+    private JsonNode schema;
 
     public CategoryRequest() {
     }
@@ -49,5 +52,13 @@ public class CategoryRequest {
 
     public void setGlobal(boolean global) {
         isGlobal = global;
+    }
+
+    public JsonNode getSchema() {
+        return schema;
+    }
+
+    public void setSchema(JsonNode schema) {
+        this.schema = schema;
     }
 }

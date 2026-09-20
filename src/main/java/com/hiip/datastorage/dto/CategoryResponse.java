@@ -1,5 +1,6 @@
 package com.hiip.datastorage.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +17,9 @@ public class CategoryResponse {
     private boolean isGlobal;
     private List<CategoryShareResponse> sharedWith;
     private List<CategoryResponse> children;
+    private JsonNode schema;
+    private List<String> quickSearchPaths;
+    private List<String> quickSearchLabels;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -101,6 +105,30 @@ public class CategoryResponse {
 
     public void setChildren(List<CategoryResponse> children) {
         this.children = children;
+    }
+
+    public JsonNode getSchema() {
+        return schema;
+    }
+
+    public void setSchema(JsonNode schema) {
+        this.schema = schema;
+    }
+
+    public List<String> getQuickSearchPaths() {
+        return quickSearchPaths;
+    }
+
+    public void setQuickSearchPaths(List<String> quickSearchPaths) {
+        this.quickSearchPaths = quickSearchPaths;
+    }
+
+    public List<String> getQuickSearchLabels() {
+        return quickSearchLabels;
+    }
+
+    public void setQuickSearchLabels(List<String> quickSearchLabels) {
+        this.quickSearchLabels = quickSearchLabels;
     }
 
     public LocalDateTime getCreatedAt() {

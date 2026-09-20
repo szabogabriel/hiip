@@ -298,6 +298,86 @@ Example:
 curl -H "Authorization: Bearer <your-jwt-token>" -X DELETE http://localhost:8080/api/v1/data/1
 ```
 
+## JSON Schema & Quick Search
+
+Categories can optionally define a JSON Schema. When a category has a schema, every data entry created or updated under that category is validated against it before being saved.
+
+### Defining a JSON Schema on a Category
+
+Pass a `schema` field when creating a category via `POST /api/v1/categories`. It must be a valid [JSON Schema](https://json-schema.org/) document (Draft 2020-12):
+
+```bash
+curl -H "Authorization: Bearer <your-jwt-token>" -X POST http://localhost:8080/api/v1/categories \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "orders",
+    "schema": {
+      "type": "object",
+      "required": ["customerId", "status"],
+      "properties": {
+        "customerId": { "type": "string" },
+        "status": { "type": "string" },
+        "total": { "type": "number" }
+      }
+    }
+  }'
+```
+
+- The `schema` field is **optional**. Categories without a schema behave exactly as before (no validation).
+- If a schema is present, any `content` submitted to `POST /api/v1/data` or `PUT /api/v1/data/{id}` under that category must satisfy it, or the request is rejected with `400 Bad Request` and a message describing the violations.
+
+### Enabling Quick Search in the Schema
+
+A schema can also declare up to **10 quick-search fields** using the `x-quick-search` keyword (a vendor extension — validators ignore unknown keywords, so it never affects schema validation). Each entry is either:
+- a plain [JSON Path](https://github.com/json-path/JsonPath) string (no label), or
+- an object of the form `{"path": "<json path>", "label": "<label>"}`
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "customerId": { "type": "string" },
+    "status": { "type": "string" },
+    "total": { "type": "number" }
+  },
+  "x-quick-search": [
+    { "path": "$.customerId", "label": "customer" },
+    { "path": "$.status", "label": "status" },
+    "$.total"
+  ]
+}
+```
+
+**Label rules:** a `label` must be a single word — letters, digits, and underscores only, starting with a letter or underscore (e.g. `status`, `order_id`). No spaces or punctuation are allowed, since labels are used as identifiers when querying (see below). Fields without a label are still stored but can't be referenced in quick-search filters.
+
+Behind the scenes, each configured entry is assigned to one of 10 quick-search columns (in the order declared, capped at 10): the JSON Path is stored on the category, and whenever a data entry is created or updated, its value is resolved from that path and stored on the corresponding column of the entry itself for fast, indexed lookups — without needing to parse the full `content` JSON.
+
+### Querying via Quick Search
+
+Use `GET /api/v1/data/accessible/quick-search` to filter data within a single category by its quick-search labels, combining conditions with a small pseudo-SQL expression language:
+
+- `label EQUALS "value"` — exact match
+- `label IN ["value1", "value2", ...]` — match any of the given values
+- Combine conditions with `AND` / `OR` (`AND` binds tighter than `OR`) and group with parentheses
+
+```bash
+curl -H "Authorization: Bearer <your-jwt-token>" -G http://localhost:8080/api/v1/data/accessible/quick-search \
+  --data-urlencode "category=orders" \
+  --data-urlencode 'filter=status IN ["shipped", "cancelled"] AND total EQUALS "42.5"'
+```
+
+```bash
+curl -H "Authorization: Bearer <your-jwt-token>" -G http://localhost:8080/api/v1/data/accessible/quick-search \
+  --data-urlencode "category=orders" \
+  --data-urlencode 'filter=(status EQUALS "shipped" OR status EQUALS "delivered") AND customer EQUALS "acme"'
+```
+
+Notes:
+- `category` must be the exact path of a category that has quick-search labels configured; the filter's labels are resolved against that category only.
+- Label matching is case-insensitive.
+- Results include data owned by you, shared with you, or in global categories — the same access rules as `/api/v1/data/accessible`.
+- Referencing a label that isn't configured on the category, or a malformed filter, returns `400 Bad Request`.
+
 ## User Management API
 
 **Note: All user management endpoints require admin privileges. Only users with `isAdmin=true` can access these endpoints.**

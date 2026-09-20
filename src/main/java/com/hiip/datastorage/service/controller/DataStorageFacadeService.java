@@ -15,6 +15,9 @@ import com.hiip.datastorage.entity.Category;
 import com.hiip.datastorage.entity.DataStorage;
 import com.hiip.datastorage.service.CategoryService;
 import com.hiip.datastorage.service.DataStorageService;
+import com.hiip.datastorage.service.search.QuickSearchExpression;
+import com.hiip.datastorage.service.search.QuickSearchFilterParser;
+import com.hiip.datastorage.service.search.QuickSearchQueryService;
 
 /**
  * Facade service for data storage operations.
@@ -32,6 +35,9 @@ public class DataStorageFacadeService {
 
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private QuickSearchQueryService quickSearchQueryService;
 
     /**
      * Create new data storage entry.
@@ -62,7 +68,11 @@ public class DataStorageFacadeService {
             throw new IllegalArgumentException("Content cannot be empty");
         }
 
+        // Validate content against the category's JSON schema, if one is defined
+        categoryService.validateContentAgainstSchema(category, request.getContent());
+
         DataStorage dataStorage = new DataStorage(request.getContent(), request.getTags(), owner, category);
+        dataStorage.setQuickSearchValues(categoryService.extractQuickSearchValues(category, request.getContent()));
         DataStorage saved = dataStorageService.createData(dataStorage);
         
         logger.info("Saved data with ID: {}, tags: {}, category: {}", 
@@ -178,8 +188,12 @@ public class DataStorageFacadeService {
             category = categoryService.getOrCreateCategory(request.getCategory(), owner);
             logger.info("Category resolved: {}", category != null ? category.getPath() : "null");
         }
-        
+
+        // Validate content against the category's JSON schema, if one is defined
+        categoryService.validateContentAgainstSchema(category, request.getContent());
+
         DataStorage updatedData = new DataStorage(request.getContent(), request.getTags(), owner, category);
+        updatedData.setQuickSearchValues(categoryService.extractQuickSearchValues(category, request.getContent()));
         
         return dataStorageService.updateData(id, updatedData, owner)
                 .map(data -> {
@@ -264,5 +278,37 @@ public class DataStorageFacadeService {
                     .map(DataStorageResponse::new)
                     .collect(Collectors.toList());
         }
+    }
+
+    /**
+     * Search data entries accessible by a user (owned + shared + global), within a single category,
+     * using a pseudo-SQL filter over that category's quick-search labels, e.g.
+     * {@code status IN ["shipped", "cancelled"] AND total EQUALS "42.5"}.
+     *
+     * @param categoryPath the category whose quick-search labels the filter refers to
+     * @param filter the quick-search filter expression
+     * @param username the requesting user
+     * @return list of data storage responses matching the filter
+     * @throws IllegalArgumentException if the category doesn't exist, the filter is malformed,
+     *         or it references a label that isn't configured on the category
+     */
+    public List<DataStorageResponse> searchByQuickSearch(String categoryPath, String filter, String username) {
+        logger.debug("Quick-search filtering category: {} with filter: {} for user: {}", categoryPath, filter, username);
+
+        if (categoryPath == null || categoryPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("Category is required for quick-search filtering");
+        }
+
+        Category category = categoryService.findByPath(categoryPath);
+        if (category == null) {
+            throw new IllegalArgumentException("Category not found: " + categoryPath);
+        }
+
+        QuickSearchExpression expression = QuickSearchFilterParser.parse(filter);
+
+        return quickSearchQueryService.search(category, expression, username)
+                .stream()
+                .map(DataStorageResponse::new)
+                .collect(Collectors.toList());
     }
 }

@@ -183,4 +183,27 @@ public class DataStorageController {
         
         return ResponseEntity.ok(data);
     }
+
+    @GetMapping("/accessible/quick-search")
+    @Operation(
+        summary = "Search accessible data using quick-search labels",
+        description = "Filter data entries within a single category (owned + shared + global) using the quick-search " +
+                     "labels configured on that category's JSON schema. Supports EQUALS and IN operators combined " +
+                     "with AND/OR and parentheses, e.g. status IN [\"shipped\", \"cancelled\"] AND total EQUALS \"42.5\"."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Search results retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Category not found, filter malformed, or unknown label"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<List<DataStorageResponse>> searchAccessibleDataByQuickSearch(
+            @RequestParam String category,
+            @RequestParam String filter,
+            Authentication authentication) {
+
+        String username = authentication.getName();
+        List<DataStorageResponse> data = dataStorageFacadeService.searchByQuickSearch(category, filter, username);
+
+        return ResponseEntity.ok(data);
+    }
 }

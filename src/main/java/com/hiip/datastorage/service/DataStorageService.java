@@ -92,6 +92,7 @@ public class DataStorageService {
             data.setContent(updatedData.getContent());
             data.setTags(updatedData.getTags());
             data.setCategory(updatedData.getCategory());
+            data.setQuickSearchValues(updatedData.getQuickSearchValues());
             return Optional.of(dataStorageRepository.save(data));
         }
         return Optional.empty();

@@ -1,9 +1,13 @@
 package com.hiip.datastorage.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Category entity representing a hierarchical category structure.
@@ -61,6 +65,86 @@ public class Category {
      */
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CategoryShare> sharedWith = new ArrayList<>();
+
+    /**
+     * Optional JSON schema used to validate entries created under this category.
+     */
+    @Column(name = "json_schema", columnDefinition = "TEXT")
+    @Convert(converter = JsonNodeConverter.class)
+    private JsonNode jsonSchema;
+
+    /**
+     * Number of "quick search" path/value columns available on categories and data entries.
+     */
+    public static final int QUICK_SEARCH_COLUMN_COUNT = 10;
+
+    /**
+     * JSON Path expressions (resolved against a category's schema) used to populate the
+     * corresponding quick-search columns on {@link DataStorage} entries for indexed lookups.
+     */
+    @Column(name = "quick_search_path_1", length = 500)
+    private String quickSearchPath1;
+
+    @Column(name = "quick_search_path_2", length = 500)
+    private String quickSearchPath2;
+
+    @Column(name = "quick_search_path_3", length = 500)
+    private String quickSearchPath3;
+
+    @Column(name = "quick_search_path_4", length = 500)
+    private String quickSearchPath4;
+
+    @Column(name = "quick_search_path_5", length = 500)
+    private String quickSearchPath5;
+
+    @Column(name = "quick_search_path_6", length = 500)
+    private String quickSearchPath6;
+
+    @Column(name = "quick_search_path_7", length = 500)
+    private String quickSearchPath7;
+
+    @Column(name = "quick_search_path_8", length = 500)
+    private String quickSearchPath8;
+
+    @Column(name = "quick_search_path_9", length = 500)
+    private String quickSearchPath9;
+
+    @Column(name = "quick_search_path_10", length = 500)
+    private String quickSearchPath10;
+
+    /**
+     * Optional human-readable labels describing each quick-search column, in the same order
+     * as the quick-search path columns above.
+     */
+    @Column(name = "quick_search_label_1", length = 200)
+    private String quickSearchLabel1;
+
+    @Column(name = "quick_search_label_2", length = 200)
+    private String quickSearchLabel2;
+
+    @Column(name = "quick_search_label_3", length = 200)
+    private String quickSearchLabel3;
+
+    @Column(name = "quick_search_label_4", length = 200)
+    private String quickSearchLabel4;
+
+    @Column(name = "quick_search_label_5", length = 200)
+    private String quickSearchLabel5;
+
+    @Column(name = "quick_search_label_6", length = 200)
+    private String quickSearchLabel6;
+
+    @Column(name = "quick_search_label_7", length = 200)
+    private String quickSearchLabel7;
+
+    @Column(name = "quick_search_label_8", length = 200)
+    private String quickSearchLabel8;
+
+    @Column(name = "quick_search_label_9", length = 200)
+    private String quickSearchLabel9;
+
+    @Column(name = "quick_search_label_10", length = 200)
+    private String quickSearchLabel10;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -160,6 +244,82 @@ public class Category {
 
     public void setSharedWith(List<CategoryShare> sharedWith) {
         this.sharedWith = sharedWith;
+    }
+
+    public JsonNode getJsonSchema() {
+        return jsonSchema;
+    }
+
+    public void setJsonSchema(JsonNode jsonSchema) {
+        this.jsonSchema = jsonSchema;
+    }
+
+    /**
+     * Get the configured quick-search JSON Path expressions, in column order, skipping unset columns.
+     */
+    public List<String> getQuickSearchPaths() {
+        return Stream.of(quickSearchPath1, quickSearchPath2, quickSearchPath3, quickSearchPath4, quickSearchPath5,
+                quickSearchPath6, quickSearchPath7, quickSearchPath8, quickSearchPath9, quickSearchPath10)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Assign up to {@link #QUICK_SEARCH_COLUMN_COUNT} JSON Path expressions to the quick-search columns,
+     * in order. Any remaining columns are cleared.
+     */
+    public void setQuickSearchPaths(List<String> paths) {
+        String[] values = new String[QUICK_SEARCH_COLUMN_COUNT];
+        if (paths != null) {
+            for (int i = 0; i < Math.min(paths.size(), QUICK_SEARCH_COLUMN_COUNT); i++) {
+                values[i] = paths.get(i);
+            }
+        }
+        quickSearchPath1 = values[0];
+        quickSearchPath2 = values[1];
+        quickSearchPath3 = values[2];
+        quickSearchPath4 = values[3];
+        quickSearchPath5 = values[4];
+        quickSearchPath6 = values[5];
+        quickSearchPath7 = values[6];
+        quickSearchPath8 = values[7];
+        quickSearchPath9 = values[8];
+        quickSearchPath10 = values[9];
+    }
+
+    /**
+     * Get the configured quick-search labels, aligned by index with {@link #getQuickSearchPaths()}
+     * (a null entry means that quick-search column has no label).
+     */
+    public List<String> getQuickSearchLabels() {
+        int count = getQuickSearchPaths().size();
+        return Stream.of(quickSearchLabel1, quickSearchLabel2, quickSearchLabel3, quickSearchLabel4, quickSearchLabel5,
+                quickSearchLabel6, quickSearchLabel7, quickSearchLabel8, quickSearchLabel9, quickSearchLabel10)
+                .collect(Collectors.toList())
+                .subList(0, count);
+    }
+
+    /**
+     * Assign up to {@link #QUICK_SEARCH_COLUMN_COUNT} labels to the quick-search columns, in order,
+     * aligned by index with {@link #setQuickSearchPaths(List)}. Any remaining columns are cleared.
+     */
+    public void setQuickSearchLabels(List<String> labels) {
+        String[] values = new String[QUICK_SEARCH_COLUMN_COUNT];
+        if (labels != null) {
+            for (int i = 0; i < Math.min(labels.size(), QUICK_SEARCH_COLUMN_COUNT); i++) {
+                values[i] = labels.get(i);
+            }
+        }
+        quickSearchLabel1 = values[0];
+        quickSearchLabel2 = values[1];
+        quickSearchLabel3 = values[2];
+        quickSearchLabel4 = values[3];
+        quickSearchLabel5 = values[4];
+        quickSearchLabel6 = values[5];
+        quickSearchLabel7 = values[6];
+        quickSearchLabel8 = values[7];
+        quickSearchLabel9 = values[8];
+        quickSearchLabel10 = values[9];
     }
 
     public LocalDateTime getCreatedAt() {

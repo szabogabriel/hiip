@@ -55,7 +55,7 @@ public class CategoryController {
     @PostMapping
     @Operation(
         summary = "Create a new category",
-        description = "Create a new category explicitly. The path can be provided or will be auto-generated from the name and parent. To create a child category, you must own or have write access to the parent category."
+        description = "Create a new category explicitly. The path can be provided or will be auto-generated from the name and parent. To create a child category, you must own or have write access to the parent category. An optional JSON schema can be provided; if present, it will be used to validate all data entries created under this category."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Category created successfully"),
@@ -75,7 +75,8 @@ public class CategoryController {
                 request.getPath(),
                 request.getParentId(),
                 currentUser,
-                request.isGlobal()
+                request.isGlobal(),
+                request.getSchema()
             );
             
             CategoryResponse response = convertToResponse(category);
@@ -174,6 +175,9 @@ public class CategoryController {
             category.getCreatedAt(),
             category.getUpdatedAt()
         );
+        response.setSchema(category.getJsonSchema());
+        response.setQuickSearchPaths(category.getQuickSearchPaths());
+        response.setQuickSearchLabels(category.getQuickSearchLabels());
         
         // Add shares if any
         List<CategoryShareResponse> shares = category.getSharedWith().stream()

@@ -1,11 +1,22 @@
 package com.hiip.datastorage.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.hiip.datastorage.entity.Category;
 import com.hiip.datastorage.entity.CategoryShare;
 import com.hiip.datastorage.entity.User;
 import com.hiip.datastorage.repository.CategoryRepository;
 import com.hiip.datastorage.repository.CategoryShareRepository;
 import com.hiip.datastorage.repository.UserRepository;
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.Option;
+import com.jayway.jsonpath.spi.json.JacksonJsonNodeJsonProvider;
+import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
+import com.networknt.schema.ValidationMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing categories and their hierarchical structure with user ownership and sharing
@@ -23,6 +37,29 @@ import java.util.Optional;
 public class CategoryService {
 
     private static final Logger logger = LoggerFactory.getLogger(CategoryService.class);
+
+    private static final JsonSchemaFactory SCHEMA_FACTORY =
+            JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+
+    /**
+     * Top-level schema keyword holding the list of quick-search mappings (up to
+     * {@link Category#QUICK_SEARCH_COLUMN_COUNT}), each either a plain JSON Path string or an
+     * object of the form {@code {"path": "$.foo", "label": "Foo"}}. Unknown keywords like this
+     * are silently ignored during schema validation.
+     */
+    private static final String QUICK_SEARCH_SCHEMA_KEY = "x-quick-search";
+
+    /**
+     * Quick-search labels must be a single word so they can be referenced unambiguously in
+     * quick-search filter expressions (see {@code QuickSearchFilterParser}).
+     */
+    private static final Pattern QUICK_SEARCH_LABEL_PATTERN = Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
+
+    private static final Configuration JSON_PATH_CONFIG = Configuration.builder()
+            .jsonProvider(new JacksonJsonNodeJsonProvider())
+            .mappingProvider(new JacksonMappingProvider())
+            .options(Option.SUPPRESS_EXCEPTIONS, Option.DEFAULT_PATH_LEAF_TO_NULL)
+            .build();
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -365,9 +402,32 @@ public class CategoryService {
      */
     @Transactional
     public Category createCategory(String name, String path, Long parentId, String createdBy, boolean isGlobal) {
+        return createCategory(name, path, parentId, createdBy, isGlobal, null);
+    }
+
+    /**
+     * Create a new category explicitly with the given parameters, optionally attaching a
+     * JSON schema that will be used to validate all data entries created under it.
+     *
+     * @param name The category name
+     * @param path The complete category path (if null, will be generated from name and parent)
+     * @param parentId The ID of the parent category (null for root categories)
+     * @param createdBy The username of the user creating the category
+     * @param isGlobal Whether this should be a global category
+     * @param jsonSchema Optional JSON schema definition used to validate entries in this category
+     * @return The created category entity
+     * @throws IllegalArgumentException if validation fails or user lacks permission
+     */
+    @Transactional
+    public Category createCategory(String name, String path, Long parentId, String createdBy, boolean isGlobal,
+                                    JsonNode jsonSchema) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Category name cannot be empty");
         }
+
+        validateSchemaDefinition(jsonSchema);
+
+        List<QuickSearchField> quickSearchFields = extractQuickSearchFields(jsonSchema);
 
         Category parent = null;
         String finalPath;
@@ -406,10 +466,156 @@ public class CategoryService {
 
         // Create and save the new category
         Category newCategory = new Category(name.trim(), finalPath, parent, createdBy, isGlobal);
+        newCategory.setJsonSchema(jsonSchema);
+        newCategory.setQuickSearchPaths(quickSearchFields.stream().map(QuickSearchField::path).collect(Collectors.toList()));
+        newCategory.setQuickSearchLabels(quickSearchFields.stream().map(QuickSearchField::label).collect(Collectors.toList()));
         newCategory = categoryRepository.save(newCategory);
         logger.info("Created new category: {} with path: {} for user: {} (global: {})", 
                    name, finalPath, createdBy, isGlobal);
 
         return newCategory;
+    }
+
+    /**
+     * Validate that the given JSON node is a well-formed JSON schema.
+     *
+     * @param schema The JSON schema definition to validate (may be null, which is allowed since schemas are optional)
+     * @throws IllegalArgumentException if the schema is malformed
+     */
+    public void validateSchemaDefinition(JsonNode schema) {
+        if (schema == null || schema.isNull()) {
+            return;
+        }
+        try {
+            SCHEMA_FACTORY.getSchema(schema);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid JSON schema: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Validate a data entry's content against the JSON schema defined on its category, if any.
+     *
+     * @param category The category the content belongs to (may be null)
+     * @param content The content to validate
+     * @throws IllegalArgumentException if the content does not satisfy the category's schema
+     */
+    public void validateContentAgainstSchema(Category category, JsonNode content) {
+        if (category == null || category.getJsonSchema() == null) {
+            return;
+        }
+
+        JsonSchema schema = SCHEMA_FACTORY.getSchema(category.getJsonSchema());
+        Set<ValidationMessage> errors = schema.validate(content);
+        if (!errors.isEmpty()) {
+            String messages = errors.stream()
+                    .map(ValidationMessage::getMessage)
+                    .collect(Collectors.joining("; "));
+            throw new IllegalArgumentException("Content does not match the schema defined for category '" +
+                    category.getPath() + "': " + messages);
+        }
+    }
+
+    /**
+     * A single quick-search mapping declared in a schema: where to read the value from (JSON Path)
+     * and, optionally, a human-readable label describing it.
+     */
+    public record QuickSearchField(String path, String label) {
+    }
+
+    /**
+     * Extract the quick-search mappings declared in a schema's "{@value #QUICK_SEARCH_SCHEMA_KEY}" array,
+     * capped at {@link Category#QUICK_SEARCH_COLUMN_COUNT} entries. Each array entry may be either a plain
+     * JSON Path string (no label), or an object of the form {@code {"path": "$.foo", "label": "Foo"}}.
+     *
+     * @param schema The JSON schema definition (may be null)
+     * @return The configured quick-search fields, in order (empty if none configured)
+     * @throws IllegalArgumentException if the keyword is present but malformed
+     */
+    public List<QuickSearchField> extractQuickSearchFields(JsonNode schema) {
+        if (schema == null || schema.isNull()) {
+            return List.of();
+        }
+
+        JsonNode quickSearchNode = schema.get(QUICK_SEARCH_SCHEMA_KEY);
+        if (quickSearchNode == null || quickSearchNode.isNull()) {
+            return List.of();
+        }
+        if (!quickSearchNode.isArray()) {
+            throw new IllegalArgumentException("'" + QUICK_SEARCH_SCHEMA_KEY + "' must be an array");
+        }
+
+        List<QuickSearchField> fields = new ArrayList<>();
+        for (JsonNode entry : quickSearchNode) {
+            fields.add(parseQuickSearchEntry(entry));
+            if (fields.size() == Category.QUICK_SEARCH_COLUMN_COUNT) {
+                logger.warn("More than {} quick-search entries defined; ignoring the rest", Category.QUICK_SEARCH_COLUMN_COUNT);
+                break;
+            }
+        }
+        return fields;
+    }
+
+    private QuickSearchField parseQuickSearchEntry(JsonNode entry) {
+        // Plain string entry: just a JSON Path, no label
+        if (entry.isTextual()) {
+            return new QuickSearchField(entry.asText(), null);
+        }
+
+        // Object entry: { "path": "$.foo", "label": "Foo" } (label optional)
+        if (entry.isObject()) {
+            JsonNode pathNode = entry.get("path");
+            if (pathNode == null || !pathNode.isTextual()) {
+                throw new IllegalArgumentException("'" + QUICK_SEARCH_SCHEMA_KEY + "' entries must define a 'path' string");
+            }
+            JsonNode labelNode = entry.get("label");
+            if (labelNode != null && !labelNode.isNull() && !labelNode.isTextual()) {
+                throw new IllegalArgumentException("'" + QUICK_SEARCH_SCHEMA_KEY + "' entry 'label' must be a string");
+            }
+            String label = (labelNode != null && labelNode.isTextual()) ? labelNode.asText() : null;
+            if (label != null && !QUICK_SEARCH_LABEL_PATTERN.matcher(label).matches()) {
+                throw new IllegalArgumentException("'" + QUICK_SEARCH_SCHEMA_KEY + "' entry 'label' must be a single " +
+                        "word with no spaces (letters, digits, underscore, starting with a letter or underscore): '" +
+                        label + "'");
+            }
+            return new QuickSearchField(pathNode.asText(), label);
+        }
+
+        throw new IllegalArgumentException("'" + QUICK_SEARCH_SCHEMA_KEY +
+                "' entries must be a JSON Path string or an object with 'path' and 'label'");
+    }
+
+    /**
+     * Resolve the quick-search column values for a data entry's content using its category's
+     * configured JSON Path expressions. Paths that don't resolve produce a null value.
+     *
+     * @param category The category the content belongs to (may be null)
+     * @param content The content to extract values from
+     * @return The resolved quick-search values, in column order (empty if no paths are configured)
+     */
+    public List<String> extractQuickSearchValues(Category category, JsonNode content) {
+        if (category == null || content == null) {
+            return List.of();
+        }
+
+        List<String> paths = category.getQuickSearchPaths();
+        if (paths.isEmpty()) {
+            return List.of();
+        }
+
+        DocumentContext context = JsonPath.using(JSON_PATH_CONFIG).parse(content);
+        List<String> values = new ArrayList<>();
+        for (String path : paths) {
+            JsonNode value = context.read(path, JsonNode.class);
+            values.add(quickSearchValueToString(value));
+        }
+        return values;
+    }
+
+    private String quickSearchValueToString(JsonNode value) {
+        if (value == null || value.isNull() || value.isMissingNode()) {
+            return null;
+        }
+        return value.isValueNode() ? value.asText() : value.toString();
     }
 }

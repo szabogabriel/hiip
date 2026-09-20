@@ -27,6 +27,25 @@ The REST API remains the backend boundary for web, mobile, and third-party clien
 
 ### [ ] 1.1 Complete the data workspace
 
+UI implementation delivered:
+
+- [x] Redesigned the login screen and dashboard as a dedicated workspace layout.
+- [x] Added sidebar navigation for all data, my data, shared with me, and accessible categories.
+- [x] Added a dedicated entry composer for JSON content, categories, and tags.
+- [x] Added a focused result stream with ownership metadata and read-only badges.
+- [x] Added responsive desktop and mobile layouts.
+- [x] Added automatic initial data loading after login.
+- [x] Added owned-entry editing through the existing update endpoint.
+- [x] Added refresh-token storage and automatic access-token refresh in the UI.
+- [x] Added accessible-data loading and searching so shared entries can appear in the workspace.
+- [x] Added safer rendering for JSON content, tags, categories, and owners.
+
+Remaining work:
+
+- [ ] Add automated browser or integration coverage for the complete workflow.
+- [ ] Replace remaining browser dialogs with in-app view and confirmation surfaces.
+- [ ] Verify edit/delete behavior against backend read/write permissions once those checks are implemented.
+
 Build the UI around storing and retrieving JSON data.
 
 Required behavior:
@@ -50,6 +69,24 @@ Acceptance criteria:
 
 ### [ ] 1.2 Category management in the UI
 
+UI implementation delivered:
+
+- [x] Display accessible categories in the workspace sidebar.
+- [x] Filter the data workspace by selecting a category.
+- [x] Show global category indicators and category paths in navigation.
+- [x] Add category sharing controls for selected categories.
+- [x] Allow owners to grant read-only or read/write access by username or email.
+- [x] Allow owners to remove existing shares.
+- [x] Show current share recipients and permission levels.
+- [x] Hide sharing controls from non-owners.
+
+Remaining work:
+
+- [ ] Add category creation and child-category management to the UI.
+- [ ] Show inherited descendant access explicitly in the category tree.
+- [ ] Add UI handling for effective permissions after backend inheritance is implemented.
+- [ ] Add automated coverage for granting, updating, and removing access.
+
 - Display only categories accessible to the current user.
 - Display descendants of shared categories.
 - Allow permitted users to create categories and child categories.
@@ -72,7 +109,11 @@ Administrators must be able to manage users from the UI because account creation
 - Hide administrative controls from normal users and enforce the restriction server-side.
 - Show duplicate username/email and weak-password validation errors.
 
+No admin user-management UI has been implemented yet.
+
 ## Priority 2: Category Permissions and Sharing
+
+The UI now exposes sharing for an individual selected category. Backend inheritance, mutation enforcement, and endpoint filtering remain outstanding.
 
 ### [ ] 2.1 Inherited category access
 
