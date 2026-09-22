@@ -42,7 +42,7 @@
                 <button class="nav-item" id="ownedDataNav" onclick="showOwnedData()"><span class="nav-icon">□</span> My data</button>
                 <button class="nav-item" id="sharedDataNav" onclick="showSharedData()"><span class="nav-icon">◌</span> Shared with me</button>
             </nav>
-            <div class="sidebar-section-label category-label">Categories <button class="icon-button" title="Refresh categories" onclick="loadCategories()">↻</button></div>
+            <div class="sidebar-section-label category-label">Categories <span><button class="icon-button" title="New category" onclick="openCategoryModal()">＋</button> <button class="icon-button" title="Refresh categories" onclick="loadCategories()">↻</button></span></div>
             <nav id="categoryNav" class="category-nav"><span class="sidebar-muted">Loading categories...</span></nav>
             <div class="sidebar-bottom">
                 <a href="/swagger-ui.html" target="_blank" class="sidebar-link">↗ API documentation</a>
@@ -92,6 +92,37 @@
             </section>
         </main>
     </div>
+
+    <div id="categoryModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div><p class="eyebrow">New category</p><h2>Define a category &amp; schema</h2></div>
+                <button type="button" class="icon-button modal-close" title="Close" onclick="closeCategoryModal()">×</button>
+            </div>
+            <form id="categoryForm" onsubmit="handleCreateCategory(event)">
+                <div class="modal-grid">
+                    <div class="form-group"><label for="categoryNameInput">Name</label><input type="text" id="categoryNameInput" required placeholder="e.g. laptops"></div>
+                    <div class="form-group"><label for="categoryParentInput">Parent category</label><select id="categoryParentInput"><option value="">None (root category)</option></select></div>
+                    <div class="form-group"><label for="categoryPathInput">Path (optional)</label><input type="text" id="categoryPathInput" placeholder="Auto-generated if left empty"></div>
+                    <label class="permission-option"><input type="checkbox" id="categoryGlobalInput"><span><strong>Global</strong><small>Accessible to all users (admin only)</small></span></label>
+                </div>
+
+                <div class="schema-editor-heading">
+                    <div><p class="eyebrow">Schema</p><h3>Fields</h3></div>
+                    <button type="button" class="button secondary compact" onclick="addSchemaNode(null)">＋ Add field</button>
+                </div>
+                <p class="composer-hint">Optional. Define the JSON structure entries in this category must follow. Enable "Quick search" on a field to make it filterable/searchable; leave the label blank to use the field's own name.</p>
+                <div id="schemaTree" class="schema-tree"></div>
+
+                <div id="categoryAlert"></div>
+                <div class="composer-actions">
+                    <button type="submit" class="button primary">Create category</button>
+                    <button type="button" class="button secondary" onclick="closeCategoryModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

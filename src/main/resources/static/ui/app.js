@@ -399,6 +399,255 @@ function populateCategoryDatalist() {
     });
 }
 
+// Category creation modal & JSON schema tree editor
+const QUICK_SEARCH_LABEL_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+let schemaTree = [];
+let schemaNodeIdSeq = 0;
+
+function openCategoryModal() {
+    document.getElementById('categoryForm').reset();
+    document.getElementById('categoryAlert').innerHTML = '';
+    schemaTree = [];
+    renderSchemaTree();
+    populateCategoryParentSelect();
+    document.getElementById('categoryModal').classList.remove('hidden');
+    document.getElementById('categoryNameInput').focus();
+}
+
+function closeCategoryModal() {
+    document.getElementById('categoryModal').classList.add('hidden');
+}
+
+function populateCategoryParentSelect() {
+    const select = document.getElementById('categoryParentInput');
+    const sorted = [...categoriesCache].sort((a, b) => a.path.localeCompare(b.path));
+    select.innerHTML = '<option value="">None (root category)</option>' +
+        sorted.map(category => `<option value="${category.id}">${escapeHtml(category.path)}</option>`).join('');
+}
+
+function findSchemaNode(nodes, id) {
+    for (const node of nodes) {
+        if (node.id === id) return node;
+        const found = findSchemaNode(node.children, id);
+        if (found) return found;
+    }
+    return null;
+}
+
+function removeSchemaNodeFromList(nodes, id) {
+    const index = nodes.findIndex(node => node.id === id);
+    if (index !== -1) {
+        nodes.splice(index, 1);
+        return true;
+    }
+    return nodes.some(node => removeSchemaNodeFromList(node.children, id));
+}
+
+function addSchemaNode(parentId) {
+    const node = {
+        id: ++schemaNodeIdSeq,
+        name: '',
+        type: 'string',
+        itemType: 'string',
+        required: false,
+        quickSearch: false,
+        quickSearchLabel: '',
+        children: []
+    };
+
+    if (parentId === null) {
+        schemaTree.push(node);
+    } else {
+        const parent = findSchemaNode(schemaTree, parentId);
+        if (!parent) return;
+        parent.children.push(node);
+    }
+    renderSchemaTree();
+}
+
+function removeSchemaNode(id) {
+    removeSchemaNodeFromList(schemaTree, id);
+    renderSchemaTree();
+}
+
+function updateSchemaNode(id, field, value, rerender = true) {
+    const node = findSchemaNode(schemaTree, id);
+    if (!node) return;
+    node[field] = value;
+    if (rerender) renderSchemaTree();
+}
+
+function schemaNodeAcceptsChildren(node) {
+    return node.type === 'object' || (node.type === 'array' && node.itemType === 'object');
+}
+
+function renderSchemaTree() {
+    const container = document.getElementById('schemaTree');
+    if (!container) return;
+    container.innerHTML = renderSchemaNodes(schemaTree) || '<p class="schema-empty">No fields defined. Entries can contain any JSON content.</p>';
+}
+
+function renderSchemaNodes(nodes) {
+    return nodes.map(node => renderSchemaNode(node)).join('');
+}
+
+function renderSchemaNode(node) {
+    const typeOptions = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null'];
+    const typeSelect = `<select onchange="updateSchemaNode(${node.id}, 'type', this.value)">
+        ${typeOptions.map(type => `<option value="${type}" ${node.type === type ? 'selected' : ''}>${type}</option>`).join('')}
+    </select>`;
+
+    const itemTypeOptions = ['string', 'number', 'integer', 'boolean', 'object'];
+    const itemTypeSelect = node.type === 'array'
+        ? `<select title="Array item type" onchange="updateSchemaNode(${node.id}, 'itemType', this.value)">
+            ${itemTypeOptions.map(type => `<option value="${type}" ${node.itemType === type ? 'selected' : ''}>${type}[]</option>`).join('')}
+        </select>`
+        : '';
+
+    const quickSearchLabelInput = node.quickSearch
+        ? `<input type="text" class="schema-node-label-input" placeholder="Label (default: ${escapeHtml(node.name) || 'field name'})" value="${escapeHtml(node.quickSearchLabel)}" oninput="updateSchemaNode(${node.id}, 'quickSearchLabel', this.value, false)">`
+        : '';
+
+    const addChildButton = schemaNodeAcceptsChildren(node)
+        ? `<button type="button" class="schema-node-add" onclick="addSchemaNode(${node.id})">＋ field</button>`
+        : '';
+
+    const childrenHtml = schemaNodeAcceptsChildren(node) && node.children.length > 0
+        ? `<div class="schema-node-children">${renderSchemaNodes(node.children)}</div>`
+        : '';
+
+    return `
+        <div class="schema-node">
+            <div class="schema-node-row">
+                <input type="text" placeholder="field name" value="${escapeHtml(node.name)}" oninput="updateSchemaNode(${node.id}, 'name', this.value, false)">
+                ${typeSelect}
+                ${itemTypeSelect}
+                <label class="schema-node-flag"><input type="checkbox" ${node.required ? 'checked' : ''} onchange="updateSchemaNode(${node.id}, 'required', this.checked, false)"> Required</label>
+                <label class="schema-node-flag"><input type="checkbox" ${node.quickSearch ? 'checked' : ''} onchange="updateSchemaNode(${node.id}, 'quickSearch', this.checked)"> Quick search</label>
+                ${quickSearchLabelInput}
+                ${addChildButton}
+                <button type="button" class="schema-node-remove" title="Remove field" onclick="removeSchemaNode(${node.id})">×</button>
+            </div>
+            ${childrenHtml}
+        </div>
+    `;
+}
+
+/**
+ * Recursively converts the schema tree into a JSON Schema fragment plus the collected
+ * x-quick-search entries (JSON Path + label), path segments account for array item traversal.
+ */
+function buildSchemaFromNodes(nodes, pathPrefix) {
+    const properties = {};
+    const required = [];
+    const quickSearch = [];
+
+    nodes.forEach(node => {
+        const name = node.name.trim();
+        if (!name) return;
+
+        const currentPath = pathPrefix + name;
+        let fieldSchema;
+
+        if (node.type === 'object') {
+            const sub = buildSchemaFromNodes(node.children, `${currentPath}.`);
+            fieldSchema = { type: 'object', properties: sub.properties };
+            if (sub.required.length) fieldSchema.required = sub.required;
+            quickSearch.push(...sub.quickSearch);
+        } else if (node.type === 'array') {
+            if (node.itemType === 'object') {
+                const sub = buildSchemaFromNodes(node.children, `${currentPath}[*].`);
+                const itemSchema = { type: 'object', properties: sub.properties };
+                if (sub.required.length) itemSchema.required = sub.required;
+                fieldSchema = { type: 'array', items: itemSchema };
+                quickSearch.push(...sub.quickSearch);
+            } else {
+                fieldSchema = { type: 'array', items: { type: node.itemType } };
+            }
+        } else {
+            fieldSchema = { type: node.type };
+        }
+
+        properties[name] = fieldSchema;
+        if (node.required) required.push(name);
+        if (node.quickSearch) {
+            const label = node.quickSearchLabel.trim() || name;
+            quickSearch.push({ path: `$.${currentPath}`, label });
+        }
+    });
+
+    return { properties, required, quickSearch };
+}
+
+function buildJsonSchema() {
+    const { properties, required, quickSearch } = buildSchemaFromNodes(schemaTree, '');
+    if (Object.keys(properties).length === 0) return null;
+
+    const schema = {
+        '$schema': 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+        properties
+    };
+    if (required.length) schema.required = required;
+    if (quickSearch.length) {
+        for (const entry of quickSearch) {
+            if (!QUICK_SEARCH_LABEL_PATTERN.test(entry.label)) {
+                throw new Error(`Quick search label "${entry.label}" must be a single word (letters, digits, underscore, starting with a letter or underscore).`);
+            }
+        }
+        schema['x-quick-search'] = quickSearch;
+    }
+    return schema;
+}
+
+async function handleCreateCategory(event) {
+    event.preventDefault();
+
+    const name = document.getElementById('categoryNameInput').value.trim();
+    const path = document.getElementById('categoryPathInput').value.trim();
+    const parentId = document.getElementById('categoryParentInput').value;
+    const isGlobal = document.getElementById('categoryGlobalInput').checked;
+    const alertDiv = document.getElementById('categoryAlert');
+
+    let schema;
+    try {
+        schema = buildJsonSchema();
+    } catch (error) {
+        alertDiv.innerHTML = `<div class="alert alert-error">❌ ${escapeHtml(error.message)}</div>`;
+        return;
+    }
+
+    const requestData = {
+        name,
+        path: path || null,
+        parentId: parentId ? Number(parentId) : null,
+        isGlobal,
+        schema
+    };
+
+    alertDiv.innerHTML = '<div class="alert">Creating category...</div>';
+
+    try {
+        const response = await authenticatedFetch('/api/v1/categories', {
+            method: 'POST',
+            body: JSON.stringify(requestData)
+        });
+
+        if (response.ok) {
+            alertDiv.innerHTML = '<div class="alert alert-success">Category created successfully.</div>';
+            await loadCategories();
+            setTimeout(closeCategoryModal, 900);
+        } else if (response.status === 401) {
+            handleLogout();
+        } else {
+            const error = await response.text();
+            alertDiv.innerHTML = `<div class="alert alert-error">❌ ${escapeHtml(error)}</div>`;
+        }
+    } catch (error) {
+        alertDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${escapeHtml(error.message)}</div>`;
+    }
+}
+
 // Create Data Handler
 async function handleCreateData(event) {
     event.preventDefault();
