@@ -110,7 +110,11 @@ button { cursor: pointer; }
 .nav-icon { width: 17px; color: var(--coral); text-align: center; }
 .nav-count { margin-left: auto; color: #789087; font: 0.72rem 'Courier New', monospace; }
 .category-nav { max-height: 42vh; overflow: auto; }
+.category-nav-row { display: flex; align-items: center; }
 .category-nav button { overflow: hidden; border: 0; background: transparent; color: #b3c2bb; padding: 7px 10px 7px 28px; text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 0.86rem; }
+.category-nav-row button:first-child { flex: 1; min-width: 0; }
+.category-edit-schema { flex: 0 0 auto; padding: 7px 10px 7px 4px !important; color: #8ca39a !important; font-size: 0.8rem !important; }
+.category-edit-schema:hover { color: var(--coral) !important; }
 .category-nav button:hover, .category-nav button.active { color: var(--coral); }
 .sidebar-muted { padding: 7px 10px; color: #71867e; font: 0.75rem 'Courier New', monospace; }
 .icon-button { border: 0; background: transparent; color: #8ca39a; font-size: 1rem; }
@@ -176,6 +180,16 @@ button { cursor: pointer; }
 .composer-panel .form-group textarea { min-height: 190px; }
 .composer-actions { display: flex; gap: 8px; }
 
+.schema-fields-container { display: grid; gap: 16px; margin-bottom: 20px; }
+.schema-field label { display: block; margin-bottom: 8px; color: var(--muted); font: 700 0.67rem 'Courier New', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.schema-field input[type='text'], .schema-field input[type='number'] { width: 100%; padding: 12px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; outline: none; background: transparent; color: var(--ink); font-size: 1rem; transition: border-color 0.2s; }
+.schema-field input[type='text']:focus, .schema-field input[type='number']:focus { border-color: var(--coral); }
+.schema-field small { color: var(--muted); font-size: 0.68rem; text-transform: none; letter-spacing: 0; }
+.required-mark { color: var(--coral); }
+.schema-field-group { margin: 0; padding: 14px 14px 2px; border: 1px solid var(--line); }
+.schema-field-group legend { padding: 0 6px; color: var(--ink); font: 700 0.72rem 'Courier New', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+.schema-field-group-body { display: grid; gap: 16px; margin-bottom: 12px; }
+
 .sharing-panel { margin-top: 32px; padding-top: 25px; border-top: 1px solid var(--line); }
 .sharing-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .sharing-heading h3 { max-width: 250px; margin-top: 7px; overflow: hidden; color: var(--ink); font-size: 1.15rem; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
@@ -222,6 +236,7 @@ button { cursor: pointer; }
 .schema-node { border-left: 2px solid var(--line); padding-left: 12px; }
 .schema-node-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 0; }
 .schema-node-row input[type='text'] { min-width: 120px; flex: 1 1 140px; padding: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); font-size: 0.82rem; }
+.schema-node-row .schema-node-enum-input { min-width: 180px; flex-basis: 220px; }
 .schema-node-row input[type='text']:focus { border-color: var(--coral); outline: none; }
 .schema-node-row select { padding: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 0.8rem; }
 .schema-node-flag { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 0.72rem; white-space: nowrap; }

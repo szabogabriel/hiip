@@ -74,6 +74,13 @@ public class Category {
     private JsonNode jsonSchema;
 
     /**
+     * Incremented every time this category's JSON schema is changed. Zero means no schema has
+     * ever been defined. Entries record the version that was active when they were created/updated.
+     */
+    @Column(name = "schema_version", nullable = false)
+    private int schemaVersion = 0;
+
+    /**
      * Number of "quick search" path/value columns available on categories and data entries.
      */
     public static final int QUICK_SEARCH_COLUMN_COUNT = 10;
@@ -252,6 +259,14 @@ public class Category {
 
     public void setJsonSchema(JsonNode jsonSchema) {
         this.jsonSchema = jsonSchema;
+    }
+
+    public int getSchemaVersion() {
+        return schemaVersion;
+    }
+
+    public void setSchemaVersion(int schemaVersion) {
+        this.schemaVersion = schemaVersion;
     }
 
     /**

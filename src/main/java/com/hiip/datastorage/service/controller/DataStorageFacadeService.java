@@ -73,6 +73,7 @@ public class DataStorageFacadeService {
 
         DataStorage dataStorage = new DataStorage(request.getContent(), request.getTags(), owner, category);
         dataStorage.setQuickSearchValues(categoryService.extractQuickSearchValues(category, request.getContent()));
+        dataStorage.setSchemaVersion(category != null && category.getJsonSchema() != null ? category.getSchemaVersion() : null);
         DataStorage saved = dataStorageService.createData(dataStorage);
         
         logger.info("Saved data with ID: {}, tags: {}, category: {}", 
@@ -194,6 +195,7 @@ public class DataStorageFacadeService {
 
         DataStorage updatedData = new DataStorage(request.getContent(), request.getTags(), owner, category);
         updatedData.setQuickSearchValues(categoryService.extractQuickSearchValues(category, request.getContent()));
+        updatedData.setSchemaVersion(category != null && category.getJsonSchema() != null ? category.getSchemaVersion() : null);
         
         return dataStorageService.updateData(id, updatedData, owner)
                 .map(data -> {

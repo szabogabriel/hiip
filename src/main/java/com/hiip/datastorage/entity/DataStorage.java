@@ -65,6 +65,13 @@ public class DataStorage {
     @Column(name = "quick_search_10", length = 500)
     private String quickSearch10;
 
+    /**
+     * The category's schema version that was active when this entry's content was last saved
+     * (null if the category had no schema at the time).
+     */
+    @Column(name = "schema_version")
+    private Integer schemaVersion;
+
     @Column(nullable = false)
     private String owner;
 
@@ -169,6 +176,14 @@ public class DataStorage {
 
     public void setOwner(String owner) {
         this.owner = owner;
+    }
+
+    public Integer getSchemaVersion() {
+        return schemaVersion;
+    }
+
+    public void setSchemaVersion(Integer schemaVersion) {
+        this.schemaVersion = schemaVersion;
     }
 
     public boolean isHidden() {

@@ -2,6 +2,7 @@ package com.hiip.datastorage.controller;
 
 import com.hiip.datastorage.dto.CategoryRequest;
 import com.hiip.datastorage.dto.CategoryResponse;
+import com.hiip.datastorage.dto.CategorySchemaRequest;
 import com.hiip.datastorage.dto.CategoryShareRequest;
 import com.hiip.datastorage.dto.CategoryShareResponse;
 import com.hiip.datastorage.entity.Category;
@@ -161,6 +162,38 @@ public class CategoryController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/{id}/schema")
+    @Operation(
+        summary = "Update category schema",
+        description = "Update the JSON schema used to validate entries in this category. Only the owner or a user " +
+            "with write access may edit the schema. The category's schema version is automatically incremented " +
+            "whenever the schema actually changes."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Schema updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid schema or category not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions on category")
+    })
+    public ResponseEntity<?> updateCategorySchema(
+            @PathVariable Long id,
+            @RequestBody CategorySchemaRequest request,
+            Authentication authentication) {
+
+        try {
+            Category category = categoryService.updateCategorySchema(id, request.getSchema(), authentication.getName());
+            return ResponseEntity.ok(convertToResponse(category));
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().contains("don't have permission")) {
+                return ResponseEntity.status(403).body(e.getMessage());
+            }
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.status(404).body(e.getMessage());
+            }
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     /**
      * Convert Category entity to CategoryResponse DTO (without children)
      */
@@ -176,6 +209,7 @@ public class CategoryController {
             category.getUpdatedAt()
         );
         response.setSchema(category.getJsonSchema());
+        response.setSchemaVersion(category.getSchemaVersion());
         response.setQuickSearchPaths(category.getQuickSearchPaths());
         response.setQuickSearchLabels(category.getQuickSearchLabels());
         

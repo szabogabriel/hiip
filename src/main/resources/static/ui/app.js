@@ -163,6 +163,7 @@ function showAllData() {
     dataView = 'all';
     setActiveNav('allDataNav');
     setWorkspaceContext('All data', 'Everything you can access, in one stream.');
+    document.getElementById('editCategorySchemaButton').classList.add('hidden');
     renderDataList();
 }
 
@@ -170,6 +171,7 @@ function showOwnedData() {
     dataView = 'owned';
     setActiveNav('ownedDataNav');
     setWorkspaceContext('My data', 'Entries created and maintained by you.');
+    document.getElementById('editCategorySchemaButton').classList.add('hidden');
     renderDataList();
 }
 
@@ -177,6 +179,7 @@ function showSharedData() {
     dataView = 'shared';
     setActiveNav('sharedDataNav');
     setWorkspaceContext('Shared with me', 'Read and collaborate on entries from your network.');
+    document.getElementById('editCategorySchemaButton').classList.add('hidden');
     renderDataList();
 }
 
@@ -254,6 +257,12 @@ async function loadCategories() {
     }
 }
 
+function canEditCategorySchema(category) {
+    if (category.isGlobal) return false;
+    if (category.createdBy === currentUser) return true;
+    return (category.sharedWith || []).some(share => share.sharedWithUsername === currentUser && share.canWrite);
+}
+
 function renderCategoryNavigation() {
     const navigation = document.getElementById('categoryNav');
     if (!navigation) return;
@@ -265,9 +274,12 @@ function renderCategoryNavigation() {
     }
 
     navigation.innerHTML = categories.map(category => `
-        <button type="button" title="${escapeHtml(category.path)}" onclick="selectCategory('${encodeURIComponent(category.path)}', this)">
-            ${category.isGlobal ? '◇' : '·'} ${escapeHtml(category.path)}
-        </button>
+        <div class="category-nav-row">
+            <button type="button" title="${escapeHtml(category.path)}" onclick="selectCategory('${encodeURIComponent(category.path)}', this)">
+                ${category.isGlobal ? '◇' : '·'} ${escapeHtml(category.path)}
+            </button>
+            ${canEditCategorySchema(category) ? `<button type="button" class="category-edit-schema" title="Edit schema" onclick="openEditSchemaModal(${category.id})">✎</button>` : ''}
+        </div>
     `).join('');
 }
 
@@ -284,12 +296,15 @@ function selectCategory(encodedPath, element) {
 
 function renderSharingPanel() {
     const panel = document.getElementById('sharingPanel');
+    const editSchemaButton = document.getElementById('editCategorySchemaButton');
     if (!selectedCategory) {
         panel.classList.add('hidden');
+        editSchemaButton.classList.add('hidden');
         return;
     }
 
     panel.classList.remove('hidden');
+    editSchemaButton.classList.toggle('hidden', !canEditCategorySchema(selectedCategory));
     document.getElementById('sharingCategoryName').textContent = selectedCategory.path;
     const isOwner = selectedCategory.createdBy === currentUser;
     document.getElementById('sharingDescription').textContent = isOwner
@@ -403,15 +418,90 @@ function populateCategoryDatalist() {
 const QUICK_SEARCH_LABEL_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 let schemaTree = [];
 let schemaNodeIdSeq = 0;
+let categoryModalMode = { mode: 'create', categoryId: null };
 
 function openCategoryModal() {
+    categoryModalMode = { mode: 'create', categoryId: null };
     document.getElementById('categoryForm').reset();
     document.getElementById('categoryAlert').innerHTML = '';
+    document.getElementById('categoryIdentityFields').classList.remove('hidden');
+    document.querySelectorAll('#categoryIdentityFields input, #categoryIdentityFields select').forEach(field => field.disabled = false);
+    document.getElementById('categorySchemaVersionInfo').classList.add('hidden');
+    document.getElementById('categoryModalEyebrow').textContent = 'New category';
+    document.getElementById('categoryModalTitle').textContent = 'Define a category & schema';
+    document.getElementById('categorySubmitButton').textContent = 'Create category';
     schemaTree = [];
     renderSchemaTree();
     populateCategoryParentSelect();
     document.getElementById('categoryModal').classList.remove('hidden');
     document.getElementById('categoryNameInput').focus();
+}
+
+function openEditSchemaModal(categoryId) {
+    const category = categoriesCache.find(c => c.id === categoryId);
+    if (!category) return;
+
+    categoryModalMode = { mode: 'editSchema', categoryId };
+    document.getElementById('categoryForm').reset();
+    document.getElementById('categoryAlert').innerHTML = '';
+    document.getElementById('categoryIdentityFields').classList.add('hidden');
+    document.querySelectorAll('#categoryIdentityFields input, #categoryIdentityFields select').forEach(field => field.disabled = true);
+    document.getElementById('categorySchemaVersionInfo').classList.remove('hidden');
+    document.getElementById('categorySchemaVersionInfo').textContent =
+        `Editing schema for "${category.path}" — current version: ${category.schemaVersion || 0}`;
+    document.getElementById('categoryModalEyebrow').textContent = 'Edit category';
+    document.getElementById('categoryModalTitle').textContent = 'Edit schema';
+    document.getElementById('categorySubmitButton').textContent = 'Save schema';
+
+    schemaNodeIdSeq = 0;
+    const quickSearchMap = new Map();
+    ((category.schema && category.schema['x-quick-search']) || []).forEach(entry => {
+        const path = typeof entry === 'string' ? entry : entry.path;
+        const label = typeof entry === 'string' ? null : (entry.label || null);
+        if (path) quickSearchMap.set(path.replace(/^\$\.?/, ''), label);
+    });
+    schemaTree = category.schema && category.schema.properties
+        ? parseSchemaProperties(category.schema.properties, category.schema.required, '', quickSearchMap)
+        : [];
+    renderSchemaTree();
+    document.getElementById('categoryModal').classList.remove('hidden');
+}
+
+function parseSchemaProperties(properties, requiredList, pathPrefix, quickSearchMap) {
+    return Object.entries(properties || {}).map(([name, fieldSchema]) => {
+        const fieldPath = pathPrefix ? `${pathPrefix}.${name}` : name;
+        const node = {
+            id: ++schemaNodeIdSeq,
+            name,
+            type: fieldSchema.type || 'string',
+            enumValues: Array.isArray(fieldSchema.enum) ? fieldSchema.enum.join(', ') : '',
+            enumType: fieldSchema.type || 'string',
+            itemType: 'string',
+            required: (requiredList || []).includes(name),
+            quickSearch: false,
+            quickSearchLabel: '',
+            children: []
+        };
+
+        if (Array.isArray(fieldSchema.enum)) node.type = 'enum';
+
+        if (node.type === 'object' && fieldSchema.properties) {
+            node.children = parseSchemaProperties(fieldSchema.properties, fieldSchema.required, fieldPath, quickSearchMap);
+        } else if (node.type === 'array') {
+            const itemSchema = fieldSchema.items || {};
+            node.itemType = itemSchema.type || 'string';
+            if (node.itemType === 'object' && itemSchema.properties) {
+                node.children = parseSchemaProperties(itemSchema.properties, itemSchema.required, `${fieldPath}[*]`, quickSearchMap);
+            }
+        }
+
+        if (quickSearchMap.has(fieldPath)) {
+            node.quickSearch = true;
+            node.quickSearchLabel = quickSearchMap.get(fieldPath) || '';
+        }
+
+        return node;
+    });
 }
 
 function closeCategoryModal() {
@@ -448,6 +538,8 @@ function addSchemaNode(parentId) {
         id: ++schemaNodeIdSeq,
         name: '',
         type: 'string',
+        enumValues: '',
+        enumType: 'string',
         itemType: 'string',
         required: false,
         quickSearch: false,
@@ -481,6 +573,14 @@ function schemaNodeAcceptsChildren(node) {
     return node.type === 'object' || (node.type === 'array' && node.itemType === 'object');
 }
 
+function parseEnumValue(value, type) {
+    if (type === 'number') return Number(value);
+    if (type === 'integer') return Number.parseInt(value, 10);
+    if (type === 'boolean') return value.toLowerCase() === 'true';
+    if (type === 'null') return null;
+    return value;
+}
+
 function renderSchemaTree() {
     const container = document.getElementById('schemaTree');
     if (!container) return;
@@ -492,7 +592,7 @@ function renderSchemaNodes(nodes) {
 }
 
 function renderSchemaNode(node) {
-    const typeOptions = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null'];
+    const typeOptions = ['string', 'number', 'integer', 'boolean', 'enum', 'object', 'array', 'null'];
     const typeSelect = `<select onchange="updateSchemaNode(${node.id}, 'type', this.value)">
         ${typeOptions.map(type => `<option value="${type}" ${node.type === type ? 'selected' : ''}>${type}</option>`).join('')}
     </select>`;
@@ -502,6 +602,10 @@ function renderSchemaNode(node) {
         ? `<select title="Array item type" onchange="updateSchemaNode(${node.id}, 'itemType', this.value)">
             ${itemTypeOptions.map(type => `<option value="${type}" ${node.itemType === type ? 'selected' : ''}>${type}[]</option>`).join('')}
         </select>`
+        : '';
+
+    const enumValuesInput = node.type === 'enum'
+        ? `<input type="text" class="schema-node-enum-input" placeholder="Values (comma-separated)" value="${escapeHtml(node.enumValues)}" oninput="updateSchemaNode(${node.id}, 'enumValues', this.value, false)">`
         : '';
 
     const quickSearchLabelInput = node.quickSearch
@@ -522,6 +626,7 @@ function renderSchemaNode(node) {
                 <input type="text" placeholder="field name" value="${escapeHtml(node.name)}" oninput="updateSchemaNode(${node.id}, 'name', this.value, false)">
                 ${typeSelect}
                 ${itemTypeSelect}
+                ${enumValuesInput}
                 <label class="schema-node-flag"><input type="checkbox" ${node.required ? 'checked' : ''} onchange="updateSchemaNode(${node.id}, 'required', this.checked, false)"> Required</label>
                 <label class="schema-node-flag"><input type="checkbox" ${node.quickSearch ? 'checked' : ''} onchange="updateSchemaNode(${node.id}, 'quickSearch', this.checked)"> Quick search</label>
                 ${quickSearchLabelInput}
@@ -565,7 +670,18 @@ function buildSchemaFromNodes(nodes, pathPrefix) {
                 fieldSchema = { type: 'array', items: { type: node.itemType } };
             }
         } else {
-            fieldSchema = { type: node.type };
+            if (node.type === 'enum') {
+                const enumValues = node.enumValues.split(',')
+                    .map(value => value.trim())
+                    .filter(Boolean)
+                    .map(value => parseEnumValue(value, node.enumType));
+                if (!enumValues.length) {
+                    throw new Error(`Enum field "${name}" must have at least one value.`);
+                }
+                fieldSchema = { type: node.enumType || 'string', enum: enumValues };
+            } else {
+                fieldSchema = { type: node.type };
+            }
         }
 
         properties[name] = fieldSchema;
@@ -602,6 +718,10 @@ function buildJsonSchema() {
 
 async function handleCreateCategory(event) {
     event.preventDefault();
+
+    if (categoryModalMode.mode === 'editSchema') {
+        return handleUpdateCategorySchema();
+    }
 
     const name = document.getElementById('categoryNameInput').value.trim();
     const path = document.getElementById('categoryPathInput').value.trim();
@@ -648,28 +768,189 @@ async function handleCreateCategory(event) {
     }
 }
 
-// Create Data Handler
-async function handleCreateData(event) {
-    event.preventDefault();
-    
-    const content = document.getElementById('dataContent').value.trim();
-    const category = document.getElementById('categoryInput').value.trim();
-    const alertDiv = document.getElementById('createAlert');
-    
-    if (!content) {
-        alertDiv.innerHTML = '<div class="alert alert-error">❌ Content is required</div>';
+async function handleUpdateCategorySchema() {
+    const alertDiv = document.getElementById('categoryAlert');
+
+    let schema;
+    try {
+        schema = buildJsonSchema();
+    } catch (error) {
+        alertDiv.innerHTML = `<div class="alert alert-error">❌ ${escapeHtml(error.message)}</div>`;
         return;
     }
 
-    // Validate JSON
-    let jsonContent;
+    alertDiv.innerHTML = '<div class="alert">Saving schema...</div>';
+
     try {
-        jsonContent = JSON.parse(content);
-    } catch (e) {
-        alertDiv.innerHTML = '<div class="alert alert-error">❌ Invalid JSON format</div>';
+        const response = await authenticatedFetch(`/api/v1/categories/${categoryModalMode.categoryId}/schema`, {
+            method: 'PUT',
+            body: JSON.stringify({ schema })
+        });
+
+        if (response.ok) {
+            alertDiv.innerHTML = '<div class="alert alert-success">Schema updated successfully.</div>';
+            await loadCategories();
+            setTimeout(closeCategoryModal, 900);
+        } else if (response.status === 401) {
+            handleLogout();
+        } else {
+            const error = await response.text();
+            alertDiv.innerHTML = `<div class="alert alert-error">❌ ${escapeHtml(error)}</div>`;
+        }
+    } catch (error) {
+        alertDiv.innerHTML = `<div class="alert alert-error">❌ Error: ${escapeHtml(error.message)}</div>`;
+    }
+}
+
+// Category-driven composer: render a plain input form for schema fields (grouped by parent
+// object) instead of the raw JSON textarea, when the selected category defines a JSON schema.
+function findCategoryByPath(path) {
+    return categoriesCache.find(category => category.path === path) || null;
+}
+
+function isSchemaComposerActive() {
+    return !document.getElementById('schemaFieldsContainer').classList.contains('hidden');
+}
+
+function handleComposerCategoryChange() {
+    renderComposerContentFields();
+}
+
+function renderComposerContentFields(existingContent) {
+    const path = document.getElementById('categoryInput').value.trim();
+    const category = path ? findCategoryByPath(path) : null;
+    const schema = category && category.schema && category.schema.properties && Object.keys(category.schema.properties).length > 0
+        ? category.schema
+        : null;
+
+    const rawGroup = document.getElementById('rawContentGroup');
+    const container = document.getElementById('schemaFieldsContainer');
+
+    if (!schema) {
+        rawGroup.classList.remove('hidden');
+        container.classList.add('hidden');
+        container.innerHTML = '';
         return;
     }
-    
+
+    rawGroup.classList.add('hidden');
+    container.classList.remove('hidden');
+    container.innerHTML = renderSchemaFieldGroup(schema.properties, schema.required || [], '', existingContent || {});
+}
+
+function renderSchemaFieldGroup(properties, requiredList, pathPrefix, valueSource) {
+    return Object.entries(properties).map(([name, fieldSchema]) => {
+        const fieldPath = pathPrefix ? `${pathPrefix}.${name}` : name;
+        const isRequired = requiredList.includes(name);
+        const value = valueSource ? valueSource[name] : undefined;
+        return renderSchemaField(name, fieldSchema, fieldPath, isRequired, value);
+    }).join('');
+}
+
+function renderSchemaField(name, fieldSchema, fieldPath, isRequired, value) {
+    const label = `${escapeHtml(name)}${isRequired ? ' <span class="required-mark">*</span>' : ''}`;
+    const type = fieldSchema.type;
+
+    if (type === 'object' && fieldSchema.properties) {
+        const inner = renderSchemaFieldGroup(fieldSchema.properties, fieldSchema.required || [], fieldPath, value || {});
+        return `<fieldset class="schema-field-group"><legend>${label}</legend><div class="schema-field-group-body">${inner}</div></fieldset>`;
+    }
+
+    if (type === 'array') {
+        const itemType = (fieldSchema.items && fieldSchema.items.type) || 'string';
+        const arrayValue = Array.isArray(value) ? value.join(', ') : '';
+        return `<div class="form-group schema-field" data-field-path="${escapeHtml(fieldPath)}" data-field-type="array" data-item-type="${escapeHtml(itemType)}">
+            <label>${label} <small>(comma-separated ${escapeHtml(itemType)} values)</small></label>
+            <input type="text" data-schema-input value="${escapeHtml(arrayValue)}" placeholder="value1, value2">
+        </div>`;
+    }
+
+    if (type === 'boolean') {
+        return `<div class="form-group schema-field" data-field-path="${escapeHtml(fieldPath)}" data-field-type="boolean">
+            <label class="permission-option"><input type="checkbox" data-schema-input ${value ? 'checked' : ''}><span><strong>${label}</strong></span></label>
+        </div>`;
+    }
+
+    const inputType = (type === 'number' || type === 'integer') ? 'number' : 'text';
+    const step = type === 'integer' ? ' step="1"' : '';
+    const inputValue = value !== undefined && value !== null ? escapeHtml(String(value)) : '';
+    return `<div class="form-group schema-field" data-field-path="${escapeHtml(fieldPath)}" data-field-type="${escapeHtml(type || 'string')}">
+        <label>${label}</label>
+        <input type="${inputType}"${step} data-schema-input value="${inputValue}" ${isRequired ? 'required' : ''}>
+    </div>`;
+}
+
+function coerceSchemaScalar(rawValue, type) {
+    if (type === 'number') return Number(rawValue);
+    if (type === 'integer') return parseInt(rawValue, 10);
+    if (type === 'boolean') return rawValue === 'true';
+    return rawValue;
+}
+
+function setNestedValue(target, pathParts, value) {
+    let cursor = target;
+    for (let i = 0; i < pathParts.length - 1; i++) {
+        const key = pathParts[i];
+        if (typeof cursor[key] !== 'object' || cursor[key] === null || Array.isArray(cursor[key])) {
+            cursor[key] = {};
+        }
+        cursor = cursor[key];
+    }
+    cursor[pathParts[pathParts.length - 1]] = value;
+}
+
+function buildContentFromSchemaFields() {
+    const content = {};
+    document.querySelectorAll('#schemaFieldsContainer .schema-field').forEach(fieldEl => {
+        const path = fieldEl.dataset.fieldPath;
+        const type = fieldEl.dataset.fieldType;
+        const input = fieldEl.querySelector('[data-schema-input]');
+        let value;
+
+        if (type === 'boolean') {
+            value = input.checked;
+        } else if (type === 'array') {
+            const raw = input.value.trim();
+            const itemType = fieldEl.dataset.itemType;
+            value = raw === '' ? [] : raw.split(',').map(part => coerceSchemaScalar(part.trim(), itemType));
+        } else if (type === 'number' || type === 'integer') {
+            value = input.value.trim() === '' ? undefined : coerceSchemaScalar(input.value.trim(), type);
+        } else {
+            value = input.value.trim() === '' ? undefined : input.value;
+        }
+
+        if (value !== undefined) {
+            setNestedValue(content, path.split('.'), value);
+        }
+    });
+    return content;
+}
+
+// Create Data Handler
+async function handleCreateData(event) {
+    event.preventDefault();
+
+    const category = document.getElementById('categoryInput').value.trim();
+    const alertDiv = document.getElementById('createAlert');
+    const schemaMode = isSchemaComposerActive();
+
+    let jsonContent;
+    if (schemaMode) {
+        jsonContent = buildContentFromSchemaFields();
+    } else {
+        const content = document.getElementById('dataContent').value.trim();
+        if (!content) {
+            alertDiv.innerHTML = '<div class="alert alert-error">❌ Content is required</div>';
+            return;
+        }
+        try {
+            jsonContent = JSON.parse(content);
+        } catch (e) {
+            alertDiv.innerHTML = '<div class="alert alert-error">❌ Invalid JSON format</div>';
+            return;
+        }
+    }
+
     alertDiv.innerHTML = `<div class="alert">${editingDataId ? 'Saving changes...' : 'Creating data...'}</div>`;
     
     // Debug logging
@@ -719,6 +1000,7 @@ function clearCreateForm() {
     document.getElementById('saveDataButton').textContent = 'Create Data';
     document.getElementById('cancelEditButton').classList.add('hidden');
     renderTags();
+    renderComposerContentFields();
 }
 
 // Load All Data
@@ -827,6 +1109,7 @@ function editData(id) {
     document.getElementById('saveDataButton').textContent = 'Save Changes';
     document.getElementById('cancelEditButton').classList.remove('hidden');
     renderTags();
+    renderComposerContentFields(item.content);
     document.getElementById('dataContent').focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }

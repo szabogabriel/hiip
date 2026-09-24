@@ -467,6 +467,7 @@ public class CategoryService {
         // Create and save the new category
         Category newCategory = new Category(name.trim(), finalPath, parent, createdBy, isGlobal);
         newCategory.setJsonSchema(jsonSchema);
+        newCategory.setSchemaVersion(jsonSchema != null && !jsonSchema.isNull() ? 1 : 0);
         newCategory.setQuickSearchPaths(quickSearchFields.stream().map(QuickSearchField::path).collect(Collectors.toList()));
         newCategory.setQuickSearchLabels(quickSearchFields.stream().map(QuickSearchField::label).collect(Collectors.toList()));
         newCategory = categoryRepository.save(newCategory);
@@ -475,6 +476,57 @@ public class CategoryService {
 
         return newCategory;
     }
+
+    /**
+     * Update the JSON schema of an existing category. Only the owner (or a user with write
+     * access) may edit the schema; global categories cannot be edited this way. The category's
+     * {@code schemaVersion} is incremented whenever the schema actually changes, and existing
+     * quick-search mappings are re-derived from the new schema.
+     *
+     * @param categoryId The ID of the category to update
+     * @param newSchema The new JSON schema definition (may be null to remove the schema)
+     * @param username The username of the user performing the update
+     * @return The updated category entity
+     * @throws IllegalArgumentException if the category doesn't exist, the schema is invalid, or
+     *                                   the user lacks permission
+     */
+    @Transactional
+    public Category updateCategorySchema(Long categoryId, JsonNode newSchema, String username) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+
+        if (!category.hasWritePermission(username)) {
+            throw new IllegalArgumentException(
+                "You don't have permission to edit the schema of '" + category.getPath() + "'. " +
+                "You must be the owner or have write access to this category."
+            );
+        }
+
+        validateSchemaDefinition(newSchema);
+        List<QuickSearchField> quickSearchFields = extractQuickSearchFields(newSchema);
+
+        JsonNode normalizedOld = normalizeSchema(category.getJsonSchema());
+        JsonNode normalizedNew = normalizeSchema(newSchema);
+        boolean changed = !java.util.Objects.equals(normalizedOld, normalizedNew);
+
+        category.setJsonSchema(newSchema);
+        category.setQuickSearchPaths(quickSearchFields.stream().map(QuickSearchField::path).collect(Collectors.toList()));
+        category.setQuickSearchLabels(quickSearchFields.stream().map(QuickSearchField::label).collect(Collectors.toList()));
+        if (changed) {
+            category.setSchemaVersion(category.getSchemaVersion() + 1);
+        }
+
+        category = categoryRepository.save(category);
+        logger.info("Updated schema for category: {} (schemaVersion: {}, changed: {})",
+                   category.getPath(), category.getSchemaVersion(), changed);
+
+        return category;
+    }
+
+    private JsonNode normalizeSchema(JsonNode schema) {
+        return (schema == null || schema.isNull()) ? null : schema;
+    }
+
 
     /**
      * Validate that the given JSON node is a well-formed JSON schema.

@@ -10,6 +10,7 @@ public class DataStorageResponse {
     private JsonNode content;
     private Set<String> tags;
     private String category;
+    private Integer schemaVersion;
     private String owner;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -22,6 +23,7 @@ public class DataStorageResponse {
         this.content = dataStorage.getContent();
         this.tags = dataStorage.getTags();
         this.category = dataStorage.getCategory() != null ? dataStorage.getCategory().getPath() : null;
+        this.schemaVersion = dataStorage.getSchemaVersion();
         this.owner = dataStorage.getOwner();
         this.createdAt = dataStorage.getCreatedAt();
         this.updatedAt = dataStorage.getUpdatedAt();
@@ -57,6 +59,14 @@ public class DataStorageResponse {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public Integer getSchemaVersion() {
+        return schemaVersion;
+    }
+
+    public void setSchemaVersion(Integer schemaVersion) {
+        this.schemaVersion = schemaVersion;
     }
 
     public String getOwner() {

@@ -18,6 +18,7 @@ public class CategoryResponse {
     private List<CategoryShareResponse> sharedWith;
     private List<CategoryResponse> children;
     private JsonNode schema;
+    private int schemaVersion;
     private List<String> quickSearchPaths;
     private List<String> quickSearchLabels;
     private LocalDateTime createdAt;
@@ -113,6 +114,14 @@ public class CategoryResponse {
 
     public void setSchema(JsonNode schema) {
         this.schema = schema;
+    }
+
+    public int getSchemaVersion() {
+        return schemaVersion;
+    }
+
+    public void setSchemaVersion(int schemaVersion) {
+        this.schemaVersion = schemaVersion;
     }
 
     public List<String> getQuickSearchPaths() {
